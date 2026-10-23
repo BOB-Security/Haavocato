@@ -4,6 +4,8 @@ const loginPanel = document.getElementById('loginPanel');
 const dashboardPanel = document.getElementById('dashboardPanel');
 const loginForm = document.getElementById('loginForm');
 const loginMessage = document.getElementById('loginMessage');
+const codeForm = document.getElementById('codeForm');
+let authMode = 'login';
 const dashboardMessage = document.getElementById('dashboardMessage');
 const logoutButton = document.getElementById('logoutButton');
 const refreshButton = document.getElementById('refreshButton');
@@ -34,10 +36,27 @@ function showDashboard() {
 }
 
 function showLogin() {
-  dashboardPanel.classList.add('hidden');
-  loginPanel.classList.remove('hidden');
-  logoutButton.classList.add('hidden');
+  dashboardPanel.classList.add('hidden'); loginPanel.classList.remove('hidden'); logoutButton.classList.add('hidden');
 }
+function setAuthMode(mode) {
+  authMode = mode; loginForm.classList.toggle('hidden', mode !== 'login'); codeForm.classList.toggle('hidden', mode === 'login');
+  loginMessage.classList.remove('success'); loginMessage.textContent = '';
+  if (mode !== 'login') {
+    document.getElementById('codeInstructions').textContent = mode === 'setup' ? 'سيصلك رمز تفعيل على البريد المعتمد. أدخله واختر كلمة مرور دائمة.' : 'سيصلك رمز إعادة تعيين على البريد المعتمد. أدخله واختر كلمة مرور جديدة.';
+    api('/api/admin/request-code', {method:'POST', body:JSON.stringify({purpose:mode})})
+      .then(x=>{loginMessage.textContent=x.message;loginMessage.classList.add('success');})
+      .catch(e=>{loginMessage.textContent=e.message;});
+  }
+}
+document.getElementById('showLogin').addEventListener('click',()=>setAuthMode('login'));
+document.getElementById('showSetup').addEventListener('click',()=>setAuthMode('setup'));
+document.getElementById('showReset').addEventListener('click',()=>setAuthMode('reset'));
+codeForm.addEventListener('submit', async (event)=>{
+  event.preventDefault(); const button=codeForm.querySelector('button[type=submit]'); button.disabled=true;
+  try { const x=await api('/api/admin/complete-password',{method:'POST',body:JSON.stringify({code:document.getElementById('code').value,password:document.getElementById('newPassword').value})});
+    codeForm.reset(); setAuthMode('login'); loginMessage.textContent=x.message; loginMessage.classList.add('success');
+  } catch(e){loginMessage.textContent=e.message;} finally{button.disabled=false;}
+});
 
 function renderRequests() {
   const term = searchInput.value.trim().toLocaleLowerCase();
@@ -107,7 +126,7 @@ loginForm.addEventListener('submit', async (event) => {
   loginMessage.textContent = 'جارٍ التحقق…';
   try {
     await api('/api/admin/login', { method: 'POST', body: JSON.stringify({
-      username: document.getElementById('username').value,
+      email: document.getElementById('email').value,
       password: document.getElementById('password').value
     }) });
     document.getElementById('password').value = '';
@@ -156,6 +175,7 @@ requestList.addEventListener('click', async (event) => {
 });
 
 (async function init() {
+  setAuthMode('login');
   try {
     await api('/api/admin/consultations');
     showDashboard();

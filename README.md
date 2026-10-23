@@ -44,7 +44,18 @@ This is the initial public-site and consultation-intake foundation, not the comp
 
 The product reference `PRODUCT_REFERENCE_LEGAL_SERVICES_AR.md` is retained unchanged.
 
-## Admin dashboard
+## Admin dashboard authentication
+
+The dashboard owner email defaults to `hazem.mustafa17@gmail.com` (optional override: `ADMIN_EMAIL`). First-time activation and password reset send a six-digit, single-use code to this mailbox; codes expire after 10 minutes and allow at most five attempts. The owner chooses a permanent password of at least 12 characters, stored as a salted scrypt hash.
+
+Configure these App Service environment variables in Azure:
+- `DATABASE_URL`: PostgreSQL connection string.
+- `ADMIN_SESSION_SECRET`: random secret at least 32 characters.
+- `RESEND_API_KEY`: Resend API key.
+- `RESEND_FROM_EMAIL`: sender address verified with Resend.
+- `NODE_ENV=production`; `PGSSL=true` if the database provider requires TLS.
+
+Email activation/reset is not operational until the database is available, the sender is verified in Resend, and all required settings are supplied. Keep all secrets out of GitHub and chat.\n
 
 The Arabic admin dashboard is available at `/admin.html`. Before using it, configure these App Service application settings in Azure (Configuration → Application settings), then restart the app:
 

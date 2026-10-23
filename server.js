@@ -12,6 +12,7 @@ const port = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 const publicDir = path.join(__dirname, 'public');
 const ADMIN_COOKIE = 'haavocato_admin';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'hazem.mustafa17@gmail.com').trim().toLowerCase();
 const ADMIN_SESSION_MS = 8 * 60 * 60 * 1000;
 
 app.disable('x-powered-by');
@@ -83,7 +84,7 @@ function verifySession(token) {
   if (!safeEqual(parts[1], expected)) return false;
   try {
     const payload = JSON.parse(Buffer.from(parts[0], 'base64url').toString('utf8'));
-    return payload.user === process.env.ADMIN_USERNAME &&
+    return payload.user === ADMIN_EMAIL &&
       Number.isFinite(payload.exp) && payload.exp > Date.now();
   } catch {
     return false;
@@ -129,6 +130,8 @@ app.get('/api/health', (_req, res) => {
     database: databaseReady ? 'ready' : 'not-configured'
   });
 });
+
+app.use('/api/admin', require('./admin-auth'));
 
 app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
   if (!adminConfigReady()) {
