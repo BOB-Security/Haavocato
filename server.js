@@ -178,7 +178,7 @@ app.patch('/api/admin/consultations/:id/status', requireAdmin, async (req, res) 
   }
   const id = String(req.params.id || '');
   const status = String(req.body.status || '');
-  if (!/^\\d{1,18}$/.test(id) || !['new', 'reviewing', 'contacted', 'closed'].includes(status)) {
+  if (!/^\d{1,18}$/.test(id) || !['new', 'reviewing', 'contacted', 'closed'].includes(status)) {
     return res.status(400).json({ error: 'رقم الطلب أو الحالة غير صالحين.' });
   }
   try {
@@ -202,7 +202,7 @@ app.post('/api/consultations', consultationLimiter, async (req, res) => {
   const details = String(req.body.details || '').trim();
 
   if (!fullName || fullName.length > 120 ||
-      !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 ||
       !phone || phone.length > 40 ||
       !service || service.length > 120 ||
       !details || details.length > 4000) {
