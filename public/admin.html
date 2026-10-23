@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#142b4a">
+  <title>لوحة تحكم أفوكاتو</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="العودة للموقع"><span class="brand-mark">H</span><span>Haavocato <small>لوحة الإدارة</small></span></a>
+    <div class="top-actions"><a href="/" class="quiet-link">عرض الموقع</a><button id="logoutButton" class="button secondary hidden" type="button">تسجيل الخروج</button></div>
+  </header>
+  <main class="wrap">
+    <section id="loginPanel" class="login-card">
+      <p class="eyebrow">دخول آمن</p>
+      <h1>مرحبًا بك في لوحة أفوكاتو</h1>
+      <p class="muted">سجّل الدخول بحساب الإدارة للوصول إلى طلبات الاستشارات.</p>
+      <form id="loginForm">
+        <label for="username">اسم المستخدم</label>
+        <input id="username" name="username" autocomplete="username" required maxlength="100">
+        <label for="password">كلمة المرور</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required maxlength="200">
+        <button class="button primary full" type="submit">تسجيل الدخول</button>
+        <p id="loginMessage" class="message" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <section id="dashboardPanel" class="hidden">
+      <div class="page-heading">
+        <div><p class="eyebrow">نظرة عامة</p><h1>طلبات الاستشارات</h1><p class="muted">راجع الطلبات وحدّث حالتها من مكان واحد.</p></div>
+        <button id="refreshButton" class="button secondary" type="button">تحديث الطلبات</button>
+      </div>
+      <div class="stats">
+        <article class="stat"><span>إجمالي الطلبات</span><strong id="totalCount">—</strong></article>
+        <article class="stat"><span>جديدة</span><strong id="newCount">—</strong></article>
+        <article class="stat"><span>قيد المراجعة</span><strong id="reviewingCount">—</strong></article>
+        <article class="stat"><span>مغلقة</span><strong id="closedCount">—</strong></article>
+      </div>
+      <div class="toolbar">
+        <label class="search-label" for="searchInput">بحث<input id="searchInput" type="search" placeholder="الاسم أو البريد أو الهاتف"></label>
+        <label for="statusFilter">الحالة<select id="statusFilter"><option value="all">كل الحالات</option><option value="new">جديد</option><option value="reviewing">قيد المراجعة</option><option value="contacted">تم التواصل</option><option value="closed">مغلق</option></select></label>
+      </div>
+      <p id="dashboardMessage" class="message" role="status" aria-live="polite"></p>
+      <div id="emptyState" class="empty hidden">لا توجد طلبات مطابقة حاليًا.</div>
+      <div id="requestList" class="request-list"></div>
+      <p class="footnote">تُعرض بيانات العملاء للمخولين فقط. لا تشارك بيانات الدخول أو روابط الجلسات.</p>
+    </section>
+  </main>
+</body>
+</html>
