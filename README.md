@@ -43,3 +43,16 @@ Use a dedicated Haavocato app; do not point this workflow at the unrelated ATSH-
 This is the initial public-site and consultation-intake foundation, not the completed legal-services management platform. Customer accounts, staff/admin roles, appointment scheduling, private document storage, notifications, audit trails, and production data-retention controls still require implementation and verification. Do not upload confidential client documents until those controls are in place.
 
 The product reference `PRODUCT_REFERENCE_LEGAL_SERVICES_AR.md` is retained unchanged.
+
+## Admin dashboard
+
+The Arabic admin dashboard is available at `/admin.html`. Before using it, configure these App Service application settings in Azure (Configuration → Application settings), then restart the app:
+
+- `ADMIN_USERNAME`: your chosen admin login name.
+- `ADMIN_PASSWORD`: a strong, unique password; do not commit it to GitHub or share it in chat.
+- `ADMIN_SESSION_SECRET`: a random secret of at least 32 characters, kept private.
+- `DATABASE_URL`: PostgreSQL connection string for saving and listing consultation requests.
+- `PGSSL=true` when your PostgreSQL provider requires TLS.
+- `NODE_ENV=production`.
+
+The dashboard uses an eight-hour signed, HttpOnly session cookie, limits login attempts, and requires authentication for listing requests or changing their status. If PostgreSQL is not configured, the dashboard can show the login page but cannot load or save consultation requests. Do not use real client data until database access, backups, and privacy controls have been verified.
