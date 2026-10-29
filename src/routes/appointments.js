@@ -28,32 +28,32 @@ function createAppointmentRouter(pool) {
         `WITH days AS (
            SELECT generate_series($1::date, $2::date, INTERVAL '1 day')::date AS local_day
          ), candidate_slots AS (
-           SELECT r.staff_user_id, r.timezone, slot_start AS starts_at,
-                  slot_start + INTERVAL '30 minutes' AS ends_at
+           SELECT r.staff_user_id, r.timezone, slots.slot_start AS starts_at,
+                  slots.slot_start + INTERVAL '30 minutes' AS ends_at
              FROM availability_rules r
              JOIN days d ON EXTRACT(DOW FROM d.local_day)::int = r.weekday
              CROSS JOIN LATERAL generate_series(
                (d.local_day + r.starts_local) AT TIME ZONE r.timezone,
                ((d.local_day + r.ends_local) AT TIME ZONE r.timezone) - INTERVAL '30 minutes',
                INTERVAL '30 minutes'
-             ) AS slot_start
+             ) AS slots(slot_start)
             WHERE r.is_active = TRUE
               AND (r.valid_from IS NULL OR d.local_day >= r.valid_from)
               AND (r.valid_until IS NULL OR d.local_day <= r.valid_until)
-              AND slot_start > NOW()
+              AND slots.slot_start > NOW()
               AND NOT EXISTS (
                 SELECT 1 FROM appointments a
                  WHERE a.assigned_lawyer_id = r.staff_user_id
                    AND a.status <> 'cancelled'
-                   AND a.starts_at < slot_start + INTERVAL '30 minutes'
-                   AND a.ends_at > slot_start
+                   AND a.starts_at < slots.slot_start + INTERVAL '30 minutes'
+                   AND a.ends_at > slots.slot_start
               )
               AND NOT EXISTS (
                 SELECT 1 FROM availability_exceptions e
                  WHERE e.staff_user_id = r.staff_user_id
                    AND e.kind = 'unavailable'
-                   AND e.starts_at < slot_start + INTERVAL '30 minutes'
-                   AND e.ends_at > slot_start
+                   AND e.starts_at < slots.slot_start + INTERVAL '30 minutes'
+                   AND e.ends_at > slots.slot_start
               )
          )
          SELECT cs.staff_user_id, sp.display_name, cs.timezone, cs.starts_at, cs.ends_at
