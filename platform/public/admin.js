@@ -288,6 +288,92 @@ async function loadNotifications(){
   }catch(error){setMessage(message,error.message,false);}
 }
 
+
+let clientItems=[],auditItems=[];
+async function loadClients(){
+  const container=document.getElementById('clientList');const message=document.getElementById('clientsMessage');container.replaceChildren();
+  try{
+    const q=document.getElementById('clientSearch').value.trim();
+    const data=await api('/api/admin/clients?q='+encodeURIComponent(q));
+    clientItems=Array.isArray(data.clients)?data.clients:[];
+    if(!clientItems.length){container.append(node('p','request-meta','لا توجد نتائج مطابقة.'));setMessage(message,'تم تحميل دليل العملاء.',true);return;}
+    clientItems.forEach(client=>{
+      const card=node('article','client-card');
+      const info=node('div','');
+      info.append(node('strong','',client.full_name||'اسم غير متوفر'));
+      info.append(node('small','',client.email+' · '+(client.phone||'بدون هاتف')));
+      const stats=node('div','');
+      stats.append(node('span','status-pill',client.status==='active'?'نشط':client.status==='suspended'?'موقوف':client.status==='pending'?'بانتظار التحقق':client.status));
+      stats.append(node('small','',(client.request_count||0)+' طلب · '+(client.preferred_language==='ar'?'العربية':'English')));
+      const actions=node('div','client-card-actions');
+      const detail=node('button','','عرض التفاصيل');detail.type='button';
+      detail.addEventListener('click',()=>loadClientDetail(client.id));
+      actions.append(detail);
+      if(['active','suspended'].includes(client.status)){
+        const next=client.status==='active'?'suspended':'active';
+        const toggle=node('button',next==='suspended'?'danger':'',next==='suspended'?'إيقاف العميل':'إعادة التفعيل');toggle.type='button';
+        toggle.addEventListener('click',async()=>{
+          toggle.disabled=true;
+          try{await api('/api/admin/clients/'+encodeURIComponent(client.id)+'/status',{method:'PATCH',body:JSON.stringify({status:next})});setMessage(message,'تم تحديث حالة العميل.',true);await loadClients();}
+          catch(error){setMessage(message,error.message,false);}finally{toggle.disabled=false;}
+        });
+        actions.append(toggle);
+      }
+      card.append(info,stats,actions);container.append(card);
+    });
+    setMessage(message,'تم تحميل دليل العملاء.',true);
+  }catch(error){setMessage(message,error.message,false);}
+}
+async function loadClientDetail(id){
+  const panel=document.getElementById('clientDetail');panel.classList.remove('hidden');panel.replaceChildren(node('p','request-meta','جارٍ تحميل تفاصيل العميل…'));
+  try{
+    const data=await api('/api/admin/clients/'+encodeURIComponent(id));const client=data.client;panel.replaceChildren();
+    panel.append(node('h3','',client.full_name||client.email));
+    const grid=node('div','client-detail-grid');
+    [[ 'البريد',client.email],['الهاتف',client.phone||'—'],['الحالة',staffStatusLabels[client.status]||client.status],['اللغة',client.preferred_language],['تاريخ التسجيل',formatDate(client.created_at)],['آخر دخول',formatDate(client.last_login_at)]].forEach(([label,value])=>{
+      const cell=node('div','client-detail-cell');cell.append(node('span','',label),node('strong','',String(value||'—')));grid.append(cell);
+    });
+    panel.append(grid);
+    const sections=[
+      ['الطلبات',data.requests||[],item=>(item.reference_code+' · '+item.service_name_snapshot+' · '+(requestStatuses[item.status]||item.status)+' · '+formatDate(item.submitted_at))],
+      ['المواعيد',data.appointments||[],item=>(formatDate(item.starts_at)+' · '+(appointmentStatuses[item.status]||item.status))],
+      ['المدفوعات',data.payments||[],item=>(item.reference_code+' · '+(paymentLabels[item.status]||item.status)+' · '+(item.amount==null?'—':Number(item.amount).toFixed(2)+' '+item.currency))]
+    ];
+    sections.forEach(([title,items,render])=>{
+      const list=node('div','client-detail-list');list.append(node('h4','',title));
+      if(!items.length)list.append(node('p','','لا توجد سجلات.'));
+      else items.forEach(item=>list.append(node('p','',render(item))));
+      panel.append(list);
+    });
+  }catch(error){panel.replaceChildren(node('p','notice',error.message));}
+}
+async function loadAudit(){
+  const container=document.getElementById('auditList');const message=document.getElementById('auditMessage');container.replaceChildren();
+  try{
+    const params=new URLSearchParams();
+    const action=document.getElementById('auditActionFilter').value.trim();
+    const entity=document.getElementById('auditEntityFilter').value;
+    if(action)params.set('action',action);if(entity)params.set('entity',entity);params.set('limit','100');
+    const data=await api('/api/admin/audit?'+params.toString());auditItems=Array.isArray(data.events)?data.events:[];
+    if(!auditItems.length){container.append(node('p','request-meta','لا توجد أحداث مطابقة.'));setMessage(message,'تم تحميل سجل التدقيق.',true);return;}
+    auditItems.forEach(event=>{
+      const row=node('article','audit-row');
+      const actionCell=node('div','');actionCell.append(node('strong','',event.action_code),node('small','',formatDate(event.created_at)+' · '+event.outcome));
+      const entityCell=node('div','');entityCell.append(node('strong','',event.entity_type+(event.entity_id?' · '+event.entity_id:'')),node('small','',event.request_id?'Request '+event.request_id:''));
+      const actorCell=node('div','audit-row-actor');actorCell.append(node('strong','',event.actor_name||event.actor_email||'System / unknown'),node('small','',event.actor_email||''));
+      row.append(actionCell,entityCell,actorCell);
+      if(event.metadata&&Object.keys(event.metadata).length)row.append(node('div','audit-metadata',JSON.stringify(event.metadata,null,2)));
+      container.append(row);
+    });
+    setMessage(message,'تم تحميل سجل التدقيق.',true);
+  }catch(error){setMessage(message,error.message,false);}
+}
+document.getElementById('refreshClients').addEventListener('click',loadClients);
+document.getElementById('clientSearch').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();loadClients();}});
+document.getElementById('auditActionFilter').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();loadAudit();}});
+document.getElementById('applyAuditFilters').addEventListener('click',loadAudit);
+document.getElementById('refreshAudit').addEventListener('click',loadAudit);
+
 let cmsServices=[],cmsPages=[],cmsInsights=[],cmsPartners=[];
 let staffUsers=[],staffRoles=[];
 
@@ -542,7 +628,7 @@ loginForm.addEventListener('submit',async(event)=>{
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadCms()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadClients(),loadAudit(),loadCms()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
 });
