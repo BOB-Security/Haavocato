@@ -19,6 +19,8 @@ const { createPublicContentRouter } = require('./routes/public-content');
 const { createDocumentRouter, createDocumentScanWebhook } = require('./routes/documents');
 const { createAdminNotificationRouter } = require('./routes/admin-notifications');
 const { createAdminUsersRouter } = require('./routes/admin-users');
+const { createAdminClientRouter } = require('./routes/admin-clients');
+const { createAdminAuditRouter } = require('./routes/admin-audit');
 
 function createApp({ pool, config }) {
   if (!pool || !config) throw new TypeError('Database pool and validated config are required.');
@@ -97,6 +99,8 @@ function createApp({ pool, config }) {
   app.use('/api/integrations/documents', createDocumentScanWebhook(pool));
   app.use('/api/admin/notifications', createAdminNotificationRouter(pool));
   app.use('/api/admin/users', createAdminUsersRouter(pool, config));
+  app.use('/api/admin/clients', createAdminClientRouter(pool));
+  app.use('/api/admin/audit', createAdminAuditRouter(pool));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
 
