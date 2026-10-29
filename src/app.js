@@ -98,6 +98,7 @@ function createApp({ pool, config }) {
   app.get('/services', (_req, res) => res.sendFile(path.join(publicDir, 'services.html')));
   app.get('/partners', (_req, res) => res.sendFile(path.join(publicDir, 'partners.html')));
   app.get('/insights', (_req, res) => res.sendFile(path.join(publicDir, 'insights.html')));
+  app.get('/insights/:slug', (_req, res) => res.sendFile(path.join(publicDir, 'article.html')));
   app.get('/contact', (_req, res) => res.sendFile(path.join(publicDir, 'contact.html')));
   app.get('/portal', (_req, res) => res.sendFile(path.join(publicDir, 'portal.html')));
   app.get('/verify-email', (_req, res) => res.sendFile(path.join(publicDir, 'verify-email.html')));
