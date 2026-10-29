@@ -8,9 +8,9 @@ This branch is a clean replacement implementation for the HA Advocates legal-ser
 - Dedicated Home, About, Services, Partners, Legal Insights, and Contact pages.
 - Published service catalogue backed by PostgreSQL.
 - Client account registration with email verification and password recovery using Resend.
-- Client portal for linked request tracking, public status timeline, appointment requests, and payment-transfer records.
+- Client portal for linked request tracking, public status timeline, appointment requests, payment-transfer records, and private document uploads.
 - Admin workspace for request triage, appointment confirmation, availability rules, payment review, and bilingual CMS editing.
-- Role/permission checks, revocable database-backed sessions, security headers, origin checks for browser mutations, rate limits, audit events, and content revision snapshots.
+- Role/permission checks, revocable database-backed sessions, security headers, origin checks for browser mutations, rate limits, audit events, content revision snapshots, and a retrying email-notification queue.
 - Transactional PostgreSQL migration runner with immutable SHA-256 checksums.
 
 ## Local setup
@@ -52,6 +52,8 @@ Requirements: Node.js 20 or newer and PostgreSQL 13 or newer.
    npm start
    ```
 
+   To process queued email notifications, run `npm run notifications:work` as a protected scheduled job or worker. It requires the Resend environment settings and database access.
+
    The site is served at `PUBLIC_ORIGIN`; staff workspace is at `/admin`, client workspace at `/portal`.
 
 ## Validation
@@ -67,7 +69,7 @@ The CI workflow runs syntax checks and automated tests on `rebuild/**` branches.
 
 ## Important boundaries / not yet production-ready
 
-- **Private legal-document upload and storage are not yet implemented.** Do not send confidential files through the public form or treat the current portal as a secure document exchange system.
+- Private legal-document upload uses an Azure Blob container configured to remain private. Uploads are quarantined by default; downloads remain blocked until a trusted scanner posts an authenticated result to `/api/integrations/documents/scan-result` using `DOCUMENT_SCAN_WEBHOOK_SECRET`. The scanner integration must be configured and tested before confidential documents are used in production. Do not send confidential files through the public form.
 - Card payments are not processed. The current payment module records local transfers for staff review; it does not charge cards or provide official account instructions.
 - Appointment slots depend on configured lawyer profiles and availability rules. Booking requests remain pending until staff confirms them.
 - Published partner profiles, official email/social links, logo assets, office details, and approved legal article content must be supplied and verified by the firm.
