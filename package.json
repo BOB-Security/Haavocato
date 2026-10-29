@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/app.js && node --check src/config.js && node --check src/db/pool.js && node --check src/security/password.js && node --check src/security/session.js && node --check src/domain/request-status.js",
+    "start:replacement": "node src/server.js",
+    "check": "node --check server.js && node --check public/app.js && node --check src/config.js && node --check src/db/pool.js && node --check src/security/password.js && node --check src/security/session.js && node --check src/security/session-store.js && node --check src/domain/request-status.js && node --check src/services/request-service.js && node --check src/middleware/require-permission.js && node --check src/routes/auth.js && node --check src/routes/public-requests.js && node --check src/routes/admin-requests.js && node --check src/app.js && node --check src/server.js && node --check scripts/bootstrap-admin.js",
     "test": "node --test"
   },
   "engines": {
