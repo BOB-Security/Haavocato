@@ -15,7 +15,7 @@ function createAdminAppointmentRouter(pool) {
 
   router.get('/',
     requirePermission(pool, 'appointments.read'),
-    async (_req, res) => {
+    async (req, res) => {
       try {
         const scopedLawyer = req.auth.roles.has('lawyer') && !req.auth.roles.has('super_admin') &&
           !req.auth.roles.has('operations_admin') && !req.auth.roles.has('intake_staff');
