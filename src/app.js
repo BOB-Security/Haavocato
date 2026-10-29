@@ -5,6 +5,7 @@ const express = require('express');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createAuthRouter } = require('./routes/auth');
+const { createAccountRouter } = require('./routes/account');
 const { createPublicRequestRouter } = require('./routes/public-requests');
 const { createPublicServicesRouter } = require('./routes/public-services');
 const { createAdminRequestRouter } = require('./routes/admin-requests');
@@ -65,6 +66,7 @@ function createApp({ pool, config }) {
     }
   });
 
+  app.use('/api/account', createAccountRouter(pool, config));
   app.use('/api/auth', rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
@@ -78,6 +80,8 @@ function createApp({ pool, config }) {
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
 
   app.get('/admin', (_req, res) => res.sendFile(path.join(publicDir, 'admin.html')));
+  app.get('/verify-email', (_req, res) => res.sendFile(path.join(publicDir, 'verify-email.html')));
+  app.get('/reset-password', (_req, res) => res.sendFile(path.join(publicDir, 'reset-password.html')));
   app.use(express.static(publicDir, { index: 'index.html', maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.get(/.*/, (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
