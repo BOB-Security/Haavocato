@@ -244,29 +244,29 @@ document.getElementById('appointmentForm').addEventListener('submit',async(event
 
 const scanLabels={pending:'Pending security scan',clean:'Cleared',quarantined:'Quarantined',failed:'Scan failed',not_scanned:'Not scanned'};
 async function loadDocuments(){
-  const container=document.getElementById('documentList');
-  const status=document.getElementById('documentMessage');
+  const container=docItem.getElementById('documentList');
+  const status=docItem.getElementById('documentMessage');
   container.replaceChildren();
   try{
     const data=await api('/api/documents/mine');
     const documents=Array.isArray(data.documents)?data.documents:[];
     if(!documents.length){container.append(node('p','muted','No documents uploaded yet.'));return;}
-    documents.forEach(document=>{
+    documents.forEach(docItem=>{
       const card=node('article','payment-record');
       const info=node('div','');
-      info.append(node('strong','',document.original_filename||'Document'));
-      info.append(node('small','',(document.reference_code||'Request')+' · '+formatBytes(document.byte_size)+' · '+formatDate(document.created_at)));
+      info.append(node('strong','',docItem.original_filename||'Document'));
+      info.append(node('small','',(docItem.reference_code||'Request')+' · '+formatBytes(docItem.byte_size)+' · '+formatDate(docItem.created_at)));
       const right=node('div','');
-      const pill=node('span','document-status '+document.scan_status,scanLabels[document.scan_status]||document.scan_status);
+      const pill=node('span','document-status '+docItem.scan_status,scanLabels[docItem.scan_status]||docItem.scan_status);
       right.append(pill);
-      if(document.scan_status==='clean'){
+      if(docItem.scan_status==='clean'){
         const download=node('button','document-download','Download file');download.type='button';
         download.addEventListener('click',async()=>{
           download.disabled=true;
           try{
-            const response=await fetch('/api/documents/'+encodeURIComponent(document.id)+'/download',{credentials:'same-origin'});
+            const response=await fetch('/api/documents/'+encodeURIComponent(docItem.id)+'/download',{credentials:'same-origin'});
             if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.error||'Download failed.');}
-            const blob=await response.blob();const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download=document.original_filename||'document';anchor.click();URL.revokeObjectURL(url);
+            const blob=await response.blob();const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download=docItem.original_filename||'document';anchor.click();URL.revokeObjectURL(url);
           }catch(error){status.textContent=error.message;status.classList.remove('success');}
           finally{download.disabled=false;}
         });
