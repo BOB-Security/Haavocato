@@ -3,6 +3,15 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { createRequest } = require('../services/request-service');
+const { findActiveSession } = require('../security/session-store');
+
+function readSessionCookie(req) {
+  for (const part of String(req.headers.cookie || '').split(';')) {
+    const index = part.indexOf('=');
+    if (index >= 0 && part.slice(0, index).trim() === 'haavocato_session') return part.slice(index + 1).trim();
+  }
+  return '';
+}
 
 function createPublicRequestRouter(pool) {
   const router = express.Router();
@@ -26,7 +35,7 @@ function createPublicRequestRouter(pool) {
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(requesterEmail) || requesterEmail.length > 254 ||
         !requesterPhone || requesterPhone.length > 40 ||
         !description || description.length > 4000 ||
-        !/^[0-9a-f-]{36}$/i.test(serviceId)) {
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(serviceId)) {
       return res.status(400).json({ error: 'Review the required fields and try again.' });
     }
 
@@ -38,10 +47,12 @@ function createPublicRequestRouter(pool) {
       const service = serviceResult.rows[0];
       if (!service) return res.status(400).json({ error: 'The selected service is not available.' });
 
+      const session = await findActiveSession(pool, readSessionCookie(req)).catch(() => null);
       const request = await createRequest(pool, {
         requesterName, requesterEmail, requesterPhone, description, serviceId,
         serviceName: preferredLanguage === 'ar' ? service.name_ar : service.name_en,
         preferredLanguage,
+        clientUserId: session?.userId || null,
       });
       return res.status(201).json({
         message: preferredLanguage === 'ar' ? 'تم استلام طلبك.' : 'Your request has been received.',
