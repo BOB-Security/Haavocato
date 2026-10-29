@@ -211,6 +211,152 @@ async function loadPayments(){
   }catch(error){setMessage(message,error.message,false);}
 }
 
+
+let cmsServices=[],cmsPages=[],cmsInsights=[],cmsPartners=[];
+document.querySelectorAll('[data-cms-tab]').forEach(button=>button.addEventListener('click',()=>{
+  document.querySelectorAll('[data-cms-tab]').forEach(item=>item.classList.toggle('active',item===button));
+  document.querySelectorAll('[data-cms-panel]').forEach(panel=>panel.classList.toggle('hidden',panel.dataset.cmsPanel!==button.dataset.cmsTab));
+}));
+function cmsMessage(text,success=false){setMessage(document.getElementById('cmsMessage'),text,success);}
+function cmsItem(container,title,subtitle,onClick){
+  const button=node('button','cms-item');
+  button.type='button';button.append(node('span','',title),node('small','',subtitle||''));button.addEventListener('click',onClick);container.append(button);
+}
+async function loadCmsServices(){
+  const data=await api('/api/admin/content/services');cmsServices=Array.isArray(data.services)?data.services:[];
+  const select=document.getElementById('cmsServiceSelect');select.replaceChildren(new Option('اختر الخدمة للتعديل',''));
+  cmsServices.forEach(item=>select.add(new Option(item.name_ar+' / '+item.name_en,item.id)));
+  renderCmsServices();
+}
+function renderCmsServices(){
+  const item=cmsServices.find(x=>x.id===document.getElementById('cmsServiceSelect').value);
+  if(!item)return;
+  document.getElementById('cmsServiceNameEn').value=item.name_en||'';
+  document.getElementById('cmsServiceNameAr').value=item.name_ar||'';
+  document.getElementById('cmsServiceSummaryEn').value=item.summary_en||'';
+  document.getElementById('cmsServiceSummaryAr').value=item.summary_ar||'';
+  document.getElementById('cmsServiceDescriptionEn').value=item.description_en||'';
+  document.getElementById('cmsServiceDescriptionAr').value=item.description_ar||'';
+  document.getElementById('cmsServiceType').value=item.delivery_type||'other';
+  document.getElementById('cmsServiceOrder').value=String(item.display_order||0);
+  document.getElementById('cmsServicePublished').checked=Boolean(item.is_published);
+}
+async function loadCmsPages(){
+  const data=await api('/api/admin/content/pages');cmsPages=Array.isArray(data.pages)?data.pages:[];
+  const container=document.getElementById('cmsPageList');container.replaceChildren();
+  cmsPages.forEach(item=>cmsItem(container,item.title_ar+' / '+item.title_en,item.status,()=>selectCmsPage(item)));
+}
+function selectCmsPage(item){
+  document.getElementById('cmsPageSlug').value=item.slug||'';
+  document.getElementById('cmsPageTitleEn').value=item.title_en||'';
+  document.getElementById('cmsPageTitleAr').value=item.title_ar||'';
+  document.getElementById('cmsPageBodyEn').value=item.body_en||'';
+  document.getElementById('cmsPageBodyAr').value=item.body_ar||'';
+  document.getElementById('cmsPageStatus').value=item.status||'draft';
+}
+async function loadCmsInsights(){
+  const data=await api('/api/admin/content/insights');cmsInsights=Array.isArray(data.insights)?data.insights:[];
+  const container=document.getElementById('cmsInsightList');container.replaceChildren();
+  cmsInsights.forEach(item=>cmsItem(container,item.title_ar+' / '+item.title_en,item.status,()=>selectCmsInsight(item)));
+}
+function selectCmsInsight(item){
+  document.getElementById('cmsInsightSlug').value=item.slug||'';
+  document.getElementById('cmsInsightTitleEn').value=item.title_en||'';
+  document.getElementById('cmsInsightTitleAr').value=item.title_ar||'';
+  document.getElementById('cmsInsightExcerptEn').value=item.excerpt_en||'';
+  document.getElementById('cmsInsightExcerptAr').value=item.excerpt_ar||'';
+  document.getElementById('cmsInsightBodyEn').value=item.body_en||'';
+  document.getElementById('cmsInsightBodyAr').value=item.body_ar||'';
+  document.getElementById('cmsInsightCategory').value=item.category||'';
+  document.getElementById('cmsInsightStatus').value=item.status||'draft';
+}
+async function loadCmsPartners(){
+  const data=await api('/api/admin/content/partners');cmsPartners=Array.isArray(data.partners)?data.partners:[];
+  const container=document.getElementById('cmsPartnerList');container.replaceChildren();
+  cmsPartners.forEach(item=>cmsItem(container,item.name_ar+' / '+item.name_en,item.is_published?'منشور':'مسودة',()=>selectCmsPartner(item)));
+}
+function selectCmsPartner(item){
+  document.getElementById('cmsPartnerId').value=item.id||'';
+  document.getElementById('cmsPartnerNameEn').value=item.name_en||'';
+  document.getElementById('cmsPartnerNameAr').value=item.name_ar||'';
+  document.getElementById('cmsPartnerTitleEn').value=item.title_en||'';
+  document.getElementById('cmsPartnerTitleAr').value=item.title_ar||'';
+  document.getElementById('cmsPartnerBioEn').value=item.bio_en||'';
+  document.getElementById('cmsPartnerBioAr').value=item.bio_ar||'';
+  document.getElementById('cmsPartnerOrder').value=String(item.display_order||0);
+  document.getElementById('cmsPartnerPublished').checked=Boolean(item.is_published);
+}
+async function loadCms(){
+  const loaders=[
+    ['services',loadCmsServices],
+    ['pages',loadCmsPages],
+    ['insights',loadCmsInsights],
+    ['partners',loadCmsPartners]
+  ];
+  const results=await Promise.allSettled(loaders.map(([,loader])=>loader()));
+  const denied=results.filter(result=>result.status==='rejected');
+  if(denied.length===loaders.length)cmsMessage('لا تتوفر صلاحيات إدارة المحتوى لهذا الحساب.',false);
+  else if(denied.length)cmsMessage('تم تحميل الأقسام المتاحة فقط؛ تحقق من صلاحيات دورك لبقية الأقسام.',false);
+  else cmsMessage('تم تحميل محتوى الموقع.',true);
+}
+document.getElementById('cmsServiceSelect').addEventListener('change',renderCmsServices);
+document.getElementById('cmsServiceForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();const id=document.getElementById('cmsServiceSelect').value;
+  if(!id){cmsMessage('اختر خدمة أولًا.',false);return;}
+  const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
+  try{
+    await api('/api/admin/content/services/'+encodeURIComponent(id),{method:'PATCH',body:JSON.stringify({
+      nameEn:document.getElementById('cmsServiceNameEn').value,nameAr:document.getElementById('cmsServiceNameAr').value,
+      summaryEn:document.getElementById('cmsServiceSummaryEn').value,summaryAr:document.getElementById('cmsServiceSummaryAr').value,
+      descriptionEn:document.getElementById('cmsServiceDescriptionEn').value,descriptionAr:document.getElementById('cmsServiceDescriptionAr').value,
+      deliveryType:document.getElementById('cmsServiceType').value,displayOrder:Number(document.getElementById('cmsServiceOrder').value),
+      isPublished:document.getElementById('cmsServicePublished').checked
+    })});
+    await loadCmsServices();cmsMessage('تم حفظ الخدمة.',true);
+  }catch(error){cmsMessage(error.message,false);}finally{button.disabled=false;}
+});
+document.getElementById('cmsPageForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();const slug=document.getElementById('cmsPageSlug').value.trim();
+  const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
+  try{
+    await api('/api/admin/content/pages/'+encodeURIComponent(slug),{method:'PUT',body:JSON.stringify({
+      titleEn:document.getElementById('cmsPageTitleEn').value,titleAr:document.getElementById('cmsPageTitleAr').value,
+      bodyEn:document.getElementById('cmsPageBodyEn').value,bodyAr:document.getElementById('cmsPageBodyAr').value,
+      status:document.getElementById('cmsPageStatus').value
+    })});
+    await loadCmsPages();cmsMessage('تم حفظ الصفحة. ستظهر التغييرات العامة فقط إذا كانت الصفحة مرتبطة بعرض المحتوى المنشور.',true);
+  }catch(error){cmsMessage(error.message,false);}finally{button.disabled=false;}
+});
+document.getElementById('cmsInsightForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();const slug=document.getElementById('cmsInsightSlug').value.trim();
+  const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
+  try{
+    await api('/api/admin/content/insights/'+encodeURIComponent(slug),{method:'PUT',body:JSON.stringify({
+      titleEn:document.getElementById('cmsInsightTitleEn').value,titleAr:document.getElementById('cmsInsightTitleAr').value,
+      excerptEn:document.getElementById('cmsInsightExcerptEn').value,excerptAr:document.getElementById('cmsInsightExcerptAr').value,
+      bodyEn:document.getElementById('cmsInsightBodyEn').value,bodyAr:document.getElementById('cmsInsightBodyAr').value,
+      category:document.getElementById('cmsInsightCategory').value,status:document.getElementById('cmsInsightStatus').value
+    })});
+    await loadCmsInsights();cmsMessage('تم حفظ المقال.',true);
+  }catch(error){cmsMessage(error.message,false);}finally{button.disabled=false;}
+});
+document.getElementById('cmsPartnerForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();const id=document.getElementById('cmsPartnerId').value;
+  const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
+  const payload={
+    nameEn:document.getElementById('cmsPartnerNameEn').value,nameAr:document.getElementById('cmsPartnerNameAr').value,
+    titleEn:document.getElementById('cmsPartnerTitleEn').value,titleAr:document.getElementById('cmsPartnerTitleAr').value,
+    bioEn:document.getElementById('cmsPartnerBioEn').value,bioAr:document.getElementById('cmsPartnerBioAr').value,
+    displayOrder:Number(document.getElementById('cmsPartnerOrder').value),isPublished:document.getElementById('cmsPartnerPublished').checked
+  };
+  try{
+    await api(id?'/api/admin/content/partners/'+encodeURIComponent(id):'/api/admin/content/partners',{method:id?'PATCH':'POST',body:JSON.stringify(payload)});
+    await loadCmsPartners();cmsMessage('تم حفظ ملف الشريك.',true);
+  }catch(error){cmsMessage(error.message,false);}finally{button.disabled=false;}
+});
+document.getElementById('cmsPartnerNew').addEventListener('click',()=>{document.getElementById('cmsPartnerForm').reset();document.getElementById('cmsPartnerId').value='';});
+document.getElementById('refreshCms').addEventListener('click',loadCms);
+
 document.getElementById('availabilityForm').addEventListener('submit',async(event)=>{
   event.preventDefault();
   const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
@@ -234,7 +380,7 @@ loginForm.addEventListener('submit',async(event)=>{
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadCms()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
 });
