@@ -16,7 +16,7 @@ test('replacement platform entrypoint and public website exist', () => {
 
 test('replacement platform includes required public pages and workspaces', () => {
   const root = path.join(__dirname, '..', 'platform', 'public');
-  for (const filename of ['about.html','services.html','partners.html','insights.html','contact.html','portal.html','admin.html','verify-email.html','reset-password.html']) {
+  for (const filename of ['about.html','services.html','partners.html','insights.html','contact.html','portal.html','admin.html','verify-email.html','reset-password.html','accept-invite.html']) {
     assert.ok(fs.existsSync(path.join(root, filename)), filename + ' should exist');
   }
 });
