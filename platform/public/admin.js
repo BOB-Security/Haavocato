@@ -248,6 +248,6 @@ statusFilter.addEventListener('change',renderRequests);
 (async function init(){
   try{
     await api('/api/auth/me');showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments()]);
   }catch{showLogin();}
 })();
