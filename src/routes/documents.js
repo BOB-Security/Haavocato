@@ -125,6 +125,31 @@ function createDocumentRouter(pool) {
     }
   });
 
+  router.get('/admin', requirePermission(pool,'documents.metadata.read'), async (req,res) => {
+    try {
+      const values=[];
+      let scope='';
+      if(req.auth.roles.has('lawyer')&&!req.auth.roles.has('super_admin')&&!req.auth.roles.has('operations_admin')&&!req.auth.roles.has('intake_staff')) {
+        values.push(req.auth.userId);
+        scope=' AND sr.assigned_to = $1';
+      }
+      const result=await pool.query(
+        `SELECT d.id,d.request_id,sr.reference_code,cp.full_name AS client_name,
+                d.original_filename,d.media_type,d.byte_size,d.scan_status,d.created_at
+           FROM private_documents d
+           LEFT JOIN service_requests sr ON sr.id=d.request_id
+           LEFT JOIN client_profiles cp ON cp.user_id=d.client_user_id
+          WHERE d.deleted_at IS NULL ${scope}
+          ORDER BY d.created_at DESC LIMIT 300`,
+        values
+      );
+      return res.json({documents:result.rows});
+    } catch(error) {
+      console.error('Admin document list failed:',error.message);
+      return res.status(503).json({error:'Document metadata is temporarily unavailable.'});
+    }
+  });
+
   router.get('/admin/:id/download', requirePermission(pool,'documents.download'), async (req,res) => {
     const id=String(req.params.id||'');
     if(!UUID.test(id))return res.status(404).json({error:'Document not found.'});
