@@ -44,7 +44,7 @@ if(action==='verify') {
   });
 }
 
-if(action==='reset') {
+if(action==='reset' || action==='invite') {
   const form=document.getElementById('resetForm');
   if(!token) {
     message.textContent='The reset token is missing. Request a new password-reset email from the client portal.';
@@ -58,7 +58,8 @@ if(action==='reset') {
     if(!token){message.textContent='The reset link is missing or invalid.';return;}
     button.disabled=true;message.textContent='Updating your password…';
     try {
-      const data=await post('/api/account/password-reset/complete',{token,password});
+      const endpoint=action==='invite'?'/api/account/accept-invite':'/api/account/password-reset/complete';
+      const data=await post(endpoint,{token,password});
       showSuccess(data.message||'Password updated.');
       form.reset();
       history.replaceState(null,'',window.location.pathname);
