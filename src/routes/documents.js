@@ -212,21 +212,35 @@ function createDocumentScanWebhook(pool) {
     if(!/^documents\/[0-9a-f-]{36}$/i.test(storageKey)||!['clean','quarantined','failed'].includes(scanStatus)||!scannerName||!scanId) {
       return res.status(400).json({error:'Invalid scan result payload.'});
     }
+    let client;
+    let transactionStarted=false;
     try{
-      const result=await pool.query(
+      client=await pool.connect();
+      await client.query('BEGIN');
+      transactionStarted=true;
+      const result=await client.query(
         'UPDATE private_documents SET scan_status=$1 WHERE storage_key=$2 AND deleted_at IS NULL RETURNING id,request_id',
         [scanStatus,storageKey]
       );
-      if(!result.rows[0])return res.status(404).json({error:'Document not found.'});
-      await pool.query(
+      if(!result.rows[0]){
+        await client.query('ROLLBACK');
+        transactionStarted=false;
+        return res.status(404).json({error:'Document not found.'});
+      }
+      await client.query(
         `INSERT INTO audit_events (action_code,entity_type,entity_id,request_id,outcome,metadata)
          VALUES ('document.scan_result','document',$1,$2,'success',$3)`,
         [result.rows[0].id,result.rows[0].request_id,JSON.stringify({scanStatus,scannerName,scanId})]
       );
+      await client.query('COMMIT');
+      transactionStarted=false;
       return res.json({ok:true});
     }catch(error){
+      if(client&&transactionStarted)await client.query('ROLLBACK').catch(()=>{});
       console.error('Document scan webhook failed:',error.message);
       return res.status(503).json({error:'Scan result could not be recorded.'});
+    }finally{
+      if(client)client.release();
     }
   });
   return router;
