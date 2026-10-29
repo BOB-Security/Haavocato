@@ -2,8 +2,6 @@
 -- Public publication is enabled for the listed core service categories; verify descriptions and
 -- scope with the firm before production launch. Courses remain unpublished because they are in preparation.
 
-BEGIN;
-
 INSERT INTO legal_services
   (slug, name_en, name_ar, summary_en, summary_ar, description_en, description_ar, delivery_type, is_published, display_order)
 VALUES
@@ -89,4 +87,3 @@ ON CONFLICT (slug) DO UPDATE SET
   display_order = EXCLUDED.display_order,
   updated_at = NOW();
 
-COMMIT;
