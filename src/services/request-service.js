@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const { assertTransition } = require('../domain/request-status');
+const { enqueueEmail } = require('./notification-service');
 
 function makeReferenceCode() {
   return 'HA-' + crypto.randomBytes(6).toString('hex').toUpperCase();
@@ -49,6 +50,12 @@ async function createRequest(pool, input, actorUserId = null) {
        VALUES ($1, 'request.created', 'service_request', $2, $3, 'success')`,
       [actorUserId, request.id, request.id]
     );
+    await enqueueEmail(client, {
+      recipientEmail: requesterEmail,
+      templateCode: 'request_received',
+      relatedRequestId: request.id,
+      metadata: { referenceCode: request.reference_code, serviceName, language: preferredLanguage }
+    });
     await client.query('COMMIT');
     return request;
   } catch (error) {
@@ -64,7 +71,7 @@ async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, pub
   try {
     await client.query('BEGIN');
     const currentResult = await client.query(
-      'SELECT id, status, preferred_language, assigned_to FROM service_requests WHERE id = $1 FOR UPDATE',
+      'SELECT id, status, preferred_language, assigned_to, requester_email, reference_code, service_name_snapshot FROM service_requests WHERE id = $1 FOR UPDATE',
       [requestId]
     );
     const current = currentResult.rows[0];
@@ -123,6 +130,12 @@ async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, pub
        VALUES ($1, 'request.status_changed', 'service_request', $2, $3, 'success')`,
       [actorUserId, requestId, requestId]
     );
+    await enqueueEmail(client, {
+      recipientEmail: current.requester_email,
+      templateCode: 'request_status',
+      relatedRequestId: requestId,
+      metadata: { referenceCode: current.reference_code, serviceName: current.service_name_snapshot, status: toStatus, publicMessage: clientMessage, language: current.preferred_language }
+    });
     await client.query('COMMIT');
     return updated.rows[0];
   } catch (error) {
