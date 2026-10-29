@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { requirePermission } = require('../middleware/require-permission');
+const { enqueueEmail } = require('../services/notification-service');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const CLIENT_METHODS = new Set(['vodafone_cash','instapay','bank_transfer']);
@@ -72,6 +73,18 @@ function createPaymentRouter(pool) {
            VALUES ($1, 'payment.submitted', 'payment', $2, $3, 'success')`,
           [req.auth.userId, result.rows[0].id, requestId]
         );
+        try {
+          const clientInfo = await pool.query('SELECT email, preferred_language FROM app_users WHERE id = $1 LIMIT 1', [req.auth.userId]);
+          const requestInfo = await pool.query('SELECT reference_code FROM service_requests WHERE id = $1 LIMIT 1', [requestId]);
+          await enqueueEmail(pool, {
+            recipientEmail: clientInfo.rows[0]?.email,
+            templateCode: 'payment_submitted',
+            relatedRequestId: requestId,
+            metadata: { referenceCode: requestInfo.rows[0]?.reference_code || '', method, language: clientInfo.rows[0]?.preferred_language || 'en' }
+          });
+        } catch (notificationError) {
+          console.error('Payment notification enqueue failed:', notificationError.message);
+        }
         return res.status(201).json({ payment: result.rows[0], message: 'Payment details submitted for review.' });
       } catch (error) {
         console.error('Client payment submission failed:', error.message);
@@ -113,7 +126,7 @@ function createPaymentRouter(pool) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        const currentResult = await client.query('SELECT id, request_id, status FROM payment_records WHERE id = $1 FOR UPDATE', [id]);
+        const currentResult = await client.query('SELECT id, request_id, client_user_id, status FROM payment_records WHERE id = $1 FOR UPDATE', [id]);
         const current = currentResult.rows[0];
         if (!current) {
           await client.query('ROLLBACK');
@@ -136,6 +149,16 @@ function createPaymentRouter(pool) {
            VALUES ($1, 'payment.status_changed', 'payment', $2, $3, 'success', $4)`,
           [req.auth.userId, id, current.request_id, JSON.stringify({ from: current.status, to: toStatus })]
         );
+        const clientInfo = current.client_user_id
+          ? await client.query('SELECT email, preferred_language FROM app_users WHERE id = $1 LIMIT 1', [current.client_user_id])
+          : { rows: [] };
+        const requestInfo = await client.query('SELECT reference_code FROM service_requests WHERE id = $1 LIMIT 1', [current.request_id]);
+        await enqueueEmail(client, {
+          recipientEmail: clientInfo.rows[0]?.email,
+          templateCode: 'payment_status',
+          relatedRequestId: current.request_id,
+          metadata: { referenceCode: requestInfo.rows[0]?.reference_code || '', status: toStatus, language: clientInfo.rows[0]?.preferred_language || 'en' }
+        });
         await client.query('COMMIT');
         return res.json({ payment: updated.rows[0] });
       } catch (error) {
