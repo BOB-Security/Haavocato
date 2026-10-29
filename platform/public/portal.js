@@ -70,6 +70,15 @@ registerForm.addEventListener('submit',async(event)=>{
   }catch(error){setMessage(error.message);}finally{button.disabled=false;}
 });
 
+document.getElementById('resendVerification').addEventListener('click',async()=>{
+  const email=document.getElementById('registerEmail').value.trim();
+  if(!email){setMessage('Enter the email address you used to register.');return;}
+  try{
+    const data=await api('/api/account/verification/resend',{method:'POST',body:JSON.stringify({email})});
+    setMessage(data.message||'If the account can be verified, instructions will be sent to its email address.',true);
+  }catch{setMessage('If the account can be verified, instructions will be sent to its email address.',true);}
+});
+
 document.getElementById('forgotPassword').addEventListener('click',async()=>{
   const email=document.getElementById('loginEmail').value.trim();
   if(!email){setMessage('Enter your email address first.');return;}
