@@ -79,6 +79,19 @@
         <p id="staffUsersMessage" class="notice" role="status" aria-live="polite"></p>
         <div id="staffUsersList" class="request-list"></div>
       </section>
+      <section class="workspace-panel clients-panel">
+        <div class="workspace-toolbar"><div><h2>إدارة العملاء</h2><p>ابحث في حسابات العملاء وافتح ملخص الطلبات والمواعيد والمدفوعات المرتبطة.</p></div><button id="refreshClients" class="button button-outline" type="button">تحديث العملاء ↻</button></div>
+        <div class="client-search"><label for="clientSearch">بحث بالاسم أو البريد أو الهاتف</label><input id="clientSearch" type="search" placeholder="اكتب للبحث…"></div>
+        <p id="clientsMessage" class="notice" role="status" aria-live="polite"></p>
+        <div id="clientList" class="request-list"></div>
+        <div id="clientDetail" class="client-detail hidden"></div>
+      </section>
+      <section class="workspace-panel audit-panel">
+        <div class="workspace-toolbar"><div><h2>سجل التدقيق</h2><p>تتبع تغييرات الحالات والصلاحيات والملفات والمدفوعات والإعدادات.</p></div><button id="refreshAudit" class="button button-outline" type="button">تحديث السجل ↻</button></div>
+        <div class="audit-filters"><label>الإجراء<input id="auditActionFilter" maxlength="100" placeholder="مثال: request.status_changed"></label><label>نوع السجل<select id="auditEntityFilter"><option value="">كل الأنواع</option><option value="service_request">طلبات الخدمة</option><option value="appointment">المواعيد</option><option value="payment">المدفوعات</option><option value="document">المستندات</option><option value="user">حسابات المستخدمين</option><option value="page">الصفحات</option><option value="insight">المقالات</option></select></label><button id="applyAuditFilters" class="button button-outline" type="button">تطبيق الفلاتر</button></div>
+        <p id="auditMessage" class="notice" role="status" aria-live="polite"></p>
+        <div id="auditList" class="request-list"></div>
+      </section>
       <section class="workspace-panel notifications-panel">
         <div class="workspace-toolbar"><div><h2>الإشعارات والبريد</h2><p>مراقبة طابور الإرسال وإعادة محاولة الرسائل الفاشلة.</p></div><button id="refreshNotifications" class="button button-outline" type="button">تحديث الإشعارات ↻</button></div>
         <p id="adminNotificationsMessage" class="notice" role="status" aria-live="polite"></p>
