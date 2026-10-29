@@ -244,8 +244,8 @@ document.getElementById('appointmentForm').addEventListener('submit',async(event
 
 const scanLabels={pending:'Pending security scan',clean:'Cleared',quarantined:'Quarantined',failed:'Scan failed',not_scanned:'Not scanned'};
 async function loadDocuments(){
-  const container=docItem.getElementById('documentList');
-  const status=docItem.getElementById('documentMessage');
+  const container=document.getElementById('documentList');
+  const status=document.getElementById('documentMessage');
   container.replaceChildren();
   try{
     const data=await api('/api/documents/mine');
