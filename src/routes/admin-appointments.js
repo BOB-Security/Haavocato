@@ -111,7 +111,7 @@ function createAdminAppointmentRouter(pool) {
       if (!UUID.test(staffUserId) || !Number.isInteger(weekday) || weekday < 0 || weekday > 6 ||
           !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(startsLocal) ||
           !/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/.test(endsLocal) ||
-          startsLocal >= endsLocal || timezone.length > 80 ||
+          timeSeconds(startsLocal) >= timeSeconds(endsLocal) || timezone.length > 80 || !validTimezone(timezone) ||
           (validFrom && !/^\d{4}-\d{2}-\d{2}$/.test(validFrom)) ||
           (validUntil && !/^\d{4}-\d{2}-\d{2}$/.test(validUntil))) {
         return res.status(400).json({ error: 'Review the availability rule fields.' });
