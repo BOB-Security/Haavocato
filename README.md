@@ -9,8 +9,8 @@ This branch is a clean replacement implementation for the HA Advocates legal-ser
 - Published service catalogue backed by PostgreSQL.
 - Client account registration with email verification and password recovery using Resend.
 - Client portal for linked request tracking, public status timeline, appointment requests, payment-transfer records, and private document uploads.
-- Admin workspace for request triage, appointment confirmation, availability rules, payment review, and bilingual CMS editing.
-- Role/permission checks, revocable database-backed sessions, security headers, origin checks for browser mutations, rate limits, audit events, content revision snapshots, and a retrying email-notification queue.
+- Admin workspace for request triage, client directory, staff invitations and role management, appointment confirmation, availability rules, payment review, private-document inventory, audit trail, notification delivery monitoring, and bilingual CMS editing.
+- Role/permission checks with lawyer matter scoping, revocable database-backed sessions, security headers, origin checks for browser mutations, rate limits, audit events, content revision snapshots, staff invitation links, and a retrying email-notification queue.
 - Transactional PostgreSQL migration runner with immutable SHA-256 checksums.
 
 ## Local setup
