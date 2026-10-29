@@ -289,6 +289,92 @@ async function loadNotifications(){
 }
 
 let cmsServices=[],cmsPages=[],cmsInsights=[],cmsPartners=[];
+let staffUsers=[],staffRoles=[];
+
+const staffStatusLabels={pending:'بانتظار الدعوة',active:'نشط',suspended:'موقوف',closed:'مغلق'};
+const roleLabels={operations_admin:'مدير العمليات',intake_staff:'استقبال الطلبات',lawyer:'محامٍ',finance_staff:'مسؤول مالي',content_editor:'محرر محتوى'};
+async function loadStaffRoles(){
+  const select=document.getElementById('staffInviteRole');
+  try{
+    const data=await api('/api/admin/users/roles');staffRoles=Array.isArray(data.roles)?data.roles:[];
+    select.replaceChildren(new Option(staffRoles.length?'اختر الدور':'لا توجد أدوار متاحة',''));
+    staffRoles.forEach(role=>select.add(new Option(role.display_name_ar||roleLabels[role.code]||role.code,role.code)));
+  }catch(error){select.replaceChildren(new Option('لا تتوفر صلاحية إدارة الأدوار',''));setMessage(document.getElementById('staffInviteMessage'),error.message,false);}
+}
+async function loadStaffUsers(){
+  const container=document.getElementById('staffUsersList');
+  const message=document.getElementById('staffUsersMessage');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/admin/users');staffUsers=Array.isArray(data.users)?data.users:[];
+    if(!staffUsers.length){container.append(node('p','request-meta','لا توجد حسابات فريق.'));setMessage(message,'تم تحميل حسابات الفريق.',true);return;}
+    staffUsers.forEach(user=>{
+      const card=node('article','staff-user-card');
+      const info=node('div','');
+      info.append(node('strong','',user.display_name||user.email),node('small','',user.email+' · '+(user.phone||'بدون هاتف')));
+      const state=node('div','');
+      state.append(node('span','status-pill',staffStatusLabels[user.status]||user.status),node('small','',(Array.isArray(user.roles)?user.roles:[]).map(code=>roleLabels[code]||code).join('، ')));
+      card.append(info,state);
+      const actions=node('div','staff-user-actions');
+      const isSuperAdmin=Array.isArray(user.roles)&&user.roles.includes('super_admin');
+      if(!isSuperAdmin){
+        if(user.status==='pending'){
+          const resend=node('button','','إعادة إرسال الدعوة');resend.type='button';
+          resend.addEventListener('click',async()=>{
+            resend.disabled=true;
+            try{const result=await api('/api/admin/users/'+encodeURIComponent(user.id)+'/resend-invite',{method:'POST',body:'{}'});setMessage(message,result.message||'تم إرسال الدعوة.',true);}
+            catch(error){setMessage(message,error.message,false);}finally{resend.disabled=false;}
+          });
+          actions.append(resend);
+        }
+        if(staffRoles.length){
+          const roleSelect=document.createElement('select');roleSelect.setAttribute('aria-label','دور '+user.email);
+          staffRoles.forEach(role=>roleSelect.add(new Option(role.display_name_ar||roleLabels[role.code]||role.code,role.code)));
+          const currentRole=(Array.isArray(user.roles)?user.roles:[]).find(code=>code!=='client');
+          roleSelect.value=staffRoles.some(role=>role.code===currentRole)?currentRole:(staffRoles[0]?.code||'');
+          const saveRole=node('button','','حفظ الدور');saveRole.type='button';
+          saveRole.addEventListener('click',async()=>{
+            saveRole.disabled=true;
+            try{await api('/api/admin/users/'+encodeURIComponent(user.id)+'/role',{method:'PATCH',body:JSON.stringify({roleCode:roleSelect.value})});setMessage(message,'تم تحديث دور الحساب.',true);await loadStaffUsers();}
+            catch(error){setMessage(message,error.message,false);}finally{saveRole.disabled=false;}
+          });
+          actions.append(roleSelect,saveRole);
+        }
+        if(['active','suspended'].includes(user.status)){
+          const nextStatus=user.status==='active'?'suspended':'active';
+          const toggle=node('button',nextStatus==='suspended'?'danger':'',nextStatus==='suspended'?'إيقاف الحساب':'إعادة تفعيل');toggle.type='button';
+          toggle.addEventListener('click',async()=>{
+            toggle.disabled=true;
+            try{await api('/api/admin/users/'+encodeURIComponent(user.id)+'/status',{method:'PATCH',body:JSON.stringify({status:nextStatus})});setMessage(message,'تم تحديث حالة الحساب.',true);await loadStaffUsers();}
+            catch(error){setMessage(message,error.message,false);}finally{toggle.disabled=false;}
+          });
+          actions.append(toggle);
+        }
+      }else actions.append(node('small','', 'حساب مدير أعلى محمي'));
+      card.append(actions);container.append(card);
+    });
+    setMessage(message,'تم تحميل حسابات الفريق.',true);
+  }catch(error){setMessage(message,error.message,false);}
+}
+document.getElementById('staffInviteForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
+  const status=document.getElementById('staffInviteMessage');setMessage(status,'جارٍ إنشاء الدعوة…',true);
+  try{
+    const result=await api('/api/admin/users',{method:'POST',body:JSON.stringify({
+      fullName:document.getElementById('staffInviteName').value,
+      email:document.getElementById('staffInviteEmail').value,
+      phone:document.getElementById('staffInvitePhone').value,
+      roleCode:document.getElementById('staffInviteRole').value
+    })});
+    setMessage(status,result.message||'تم إنشاء حساب الفريق.',Boolean(result.invitationSent));
+    event.currentTarget.reset();
+    await loadStaffUsers();
+  }catch(error){setMessage(status,error.message,false);}
+  finally{button.disabled=false;}
+});
+document.getElementById('refreshStaff').addEventListener('click',async()=>{await Promise.all([loadStaffRoles(),loadStaffUsers()]);});
+
 document.querySelectorAll('[data-cms-tab]').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('[data-cms-tab]').forEach(item=>item.classList.toggle('active',item===button));
   document.querySelectorAll('[data-cms-panel]').forEach(panel=>panel.classList.toggle('hidden',panel.dataset.cmsPanel!==button.dataset.cmsTab));
@@ -456,7 +542,7 @@ loginForm.addEventListener('submit',async(event)=>{
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadCms()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadCms()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
 });
