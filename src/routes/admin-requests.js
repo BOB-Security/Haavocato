@@ -21,7 +21,7 @@ function createAdminRequestRouter(pool) {
         return res.status(400).json({ error: 'Invalid pagination parameters.' });
       }
       try {
-        const requests = await listRequests(pool, { status, assignedTo: req.auth.roles.has('lawyer') ? req.auth.userId : undefined, limit, offset });
+        const requests = await listRequests(pool, { status, assignedTo: (req.auth.roles.has('lawyer') && !req.auth.roles.has('super_admin') && !req.auth.roles.has('operations_admin') && !req.auth.roles.has('intake_staff')) ? req.auth.userId : undefined, limit, offset });
         return res.json({ requests, page: { limit: Math.min(Math.max(limit, 1), 100), offset } });
       } catch (error) {
         console.error('Admin request list failed:', error.message);
@@ -46,7 +46,7 @@ function createAdminRequestRouter(pool) {
       try {
         const request = await changeRequestStatus(pool, {
           requestId, toStatus, actorUserId: req.auth.userId, publicMessage, internalNote,
-          mustBeAssignedTo: req.auth.roles.has('lawyer') ? req.auth.userId : null,
+          mustBeAssignedTo: (req.auth.roles.has('lawyer') && !req.auth.roles.has('super_admin') && !req.auth.roles.has('operations_admin') && !req.auth.roles.has('intake_staff')) ? req.auth.userId : null,
         });
         return res.json({ request });
       } catch (error) {
