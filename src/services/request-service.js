@@ -38,10 +38,11 @@ async function createRequest(pool, input, actorUserId = null) {
       [referenceCode, clientUserId, serviceId, serviceName, requesterName, requesterEmail, requesterPhone, preferredLanguage, description]
     );
     const request = created.rows[0];
+    const initialMessage = preferredLanguage === 'ar' ? 'تم استلام طلبك وسيجري مراجعته.' : 'We received your request and will review it.';
     await client.query(
       `INSERT INTO request_status_events (request_id, from_status, to_status, public_message, changed_by)
        VALUES ($1, NULL, 'new', $2, $3)`,
-      [request.id, 'We received your request and will review it.', actorUserId]
+      [request.id, initialMessage, actorUserId]
     );
     await client.query(
       `INSERT INTO audit_events (actor_user_id, action_code, entity_type, entity_id, request_id, outcome)
