@@ -212,6 +212,48 @@ async function loadPayments(){
 }
 
 
+
+const documentScanLabels={pending:'بانتظار الفحص',clean:'اجتاز الفحص',quarantined:'معزول',failed:'فشل الفحص',not_scanned:'لم يُفحص'};
+async function loadDocuments(){
+  const container=document.getElementById('adminDocumentList');
+  const message=document.getElementById('adminDocumentsMessage');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/documents/admin');
+    const documents=Array.isArray(data.documents)?data.documents:[];
+    if(!documents.length){container.append(node('p','request-meta','لا توجد مستندات مسجلة.'));setMessage(message,'تم تحميل قائمة المستندات.',true);return;}
+    documents.forEach(docItem=>{
+      const card=node('article','staff-document-card');
+      const info=node('div','');
+      info.append(node('strong','',docItem.original_filename||'مستند'));
+      info.append(node('small','',(docItem.client_name||'عميل')+' · '+(docItem.reference_code||'طلب')+' · '+formatDate(docItem.created_at)+' · '+formatBytesAdmin(docItem.byte_size)));
+      const actions=node('div','staff-document-actions');
+      actions.append(node('span','document-status '+docItem.scan_status,documentScanLabels[docItem.scan_status]||docItem.scan_status));
+      if(docItem.scan_status==='clean'){
+        const download=node('button','','تنزيل الملف');download.type='button';
+        download.addEventListener('click',async()=>{
+          download.disabled=true;
+          try{
+            const response=await fetch('/api/documents/admin/'+encodeURIComponent(docItem.id)+'/download',{credentials:'same-origin'});
+            if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.error||'تعذر تنزيل المستند.');}
+            const blob=await response.blob();const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download=docItem.original_filename||'document';anchor.click();URL.revokeObjectURL(url);
+          }catch(error){setMessage(message,error.message,false);}
+          finally{download.disabled=false;}
+        });
+        actions.append(download);
+      }
+      card.append(info,actions);container.append(card);
+    });
+    setMessage(message,'تم تحميل قائمة المستندات.',true);
+  }catch(error){setMessage(message,error.message,false);}
+}
+function formatBytesAdmin(value){
+  const bytes=Number(value)||0;
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+}
+
 let cmsServices=[],cmsPages=[],cmsInsights=[],cmsPartners=[];
 document.querySelectorAll('[data-cms-tab]').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('[data-cms-tab]').forEach(item=>item.classList.toggle('active',item===button));
@@ -380,7 +422,7 @@ loginForm.addEventListener('submit',async(event)=>{
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadCms()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadCms()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
 });
@@ -388,6 +430,7 @@ logoutButton.addEventListener('click',async()=>{try{await api('/api/auth/logout'
 refreshButton.addEventListener('click',loadRequests);
 document.getElementById('refreshAppointments').addEventListener('click',loadAppointments);
 document.getElementById('refreshPayments').addEventListener('click',loadPayments);
+document.getElementById('refreshDocuments').addEventListener('click',loadDocuments);
 searchInput.addEventListener('input',renderRequests);
 statusFilter.addEventListener('change',renderRequests);
 
