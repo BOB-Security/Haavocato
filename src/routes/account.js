@@ -148,6 +148,65 @@ function createAccountRouter(pool, config) {
     }
   });
 
+  router.post('/accept-invite', limited, async (req, res) => {
+    const token = typeof req.body.token === 'string' ? req.body.token : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (token.length < 32 || token.length > 256 || password.length < 12 || password.length > 200) {
+      return res.status(400).json({ error: 'The invitation link or new password is invalid.' });
+    }
+    let credentials;
+    try { credentials = await hashPassword(password); }
+    catch { return res.status(400).json({ error: 'The new password must be between 12 and 200 characters.' }); }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const found = await client.query(
+        `SELECT t.id,t.user_id FROM auth_tokens t
+          JOIN app_users u ON u.id=t.user_id
+          WHERE t.token_hash=$1 AND t.purpose='staff_invite'
+            AND t.consumed_at IS NULL AND t.expires_at>NOW() AND u.status='pending'
+          FOR UPDATE OF t,u`,
+        [hashToken(token)]
+      );
+      const invite = found.rows[0];
+      if (!invite) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'The invitation link is invalid or expired.' });
+      }
+      const staffRole = await client.query(
+        `SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id
+          WHERE ur.user_id=$1 AND rd.code <> 'client' LIMIT 1`,
+        [invite.user_id]
+      );
+      if (!staffRole.rows[0]) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'This invitation is not valid for a staff account.' });
+      }
+      await client.query('UPDATE auth_tokens SET consumed_at=NOW() WHERE id=$1',[invite.id]);
+      await client.query(
+        `UPDATE app_users SET password_hash=$1,password_salt=$2,email_verified_at=NOW(),status='active',updated_at=NOW()
+          WHERE id=$3 AND status='pending'`,
+        [credentials.hash,credentials.salt,invite.user_id]
+      );
+      await client.query(
+        `UPDATE auth_tokens SET consumed_at=NOW() WHERE user_id=$1 AND purpose='staff_invite' AND consumed_at IS NULL`,
+        [invite.user_id]
+      );
+      await client.query(
+        `INSERT INTO audit_events (actor_user_id,action_code,entity_type,entity_id,outcome)
+         VALUES ($1,'staff.invitation_accepted','user',$1,'success')`,
+        [invite.user_id]
+      );
+      await client.query('COMMIT');
+      return res.json({ ok:true, message:'Your staff account is active. You can now sign in to the admin workspace.' });
+    } catch(error) {
+      await client.query('ROLLBACK').catch(()=>{});
+      console.error('Staff invitation acceptance failed:',error.message);
+      return res.status(503).json({error:'The staff invitation could not be accepted.'});
+    } finally { client.release(); }
+  });
+
   router.post('/verify-email', limited, async (req, res) => {
     const token = typeof req.body.token === 'string' ? req.body.token : '';
     if (token.length < 32 || token.length > 256) return res.status(400).json({ error: 'This verification link is invalid or expired.' });
