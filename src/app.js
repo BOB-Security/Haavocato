@@ -9,6 +9,7 @@ const { createAccountRouter } = require('./routes/account');
 const { createPublicRequestRouter } = require('./routes/public-requests');
 const { createPublicServicesRouter } = require('./routes/public-services');
 const { createAdminRequestRouter } = require('./routes/admin-requests');
+const { createClientRequestRouter } = require('./routes/client-requests');
 
 function createApp({ pool, config }) {
   if (!pool || !config) throw new TypeError('Database pool and validated config are required.');
@@ -76,10 +77,12 @@ function createApp({ pool, config }) {
   app.use('/api/services', createPublicServicesRouter(pool));
   app.use('/api/requests', createPublicRequestRouter(pool));
   app.use('/api/admin/requests', createAdminRequestRouter(pool));
+  app.use('/api/client/requests', createClientRequestRouter(pool));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
 
   app.get('/admin', (_req, res) => res.sendFile(path.join(publicDir, 'admin.html')));
+  app.get('/portal', (_req, res) => res.sendFile(path.join(publicDir, 'portal.html')));
   app.get('/verify-email', (_req, res) => res.sendFile(path.join(publicDir, 'verify-email.html')));
   app.get('/reset-password', (_req, res) => res.sendFile(path.join(publicDir, 'reset-password.html')));
   app.use(express.static(publicDir, { index: 'index.html', maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
