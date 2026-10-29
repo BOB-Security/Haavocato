@@ -2,8 +2,6 @@
 -- Apply only to a NEW/staging database during development. Never run against production
 -- until a reviewed migration and verified backup/restore procedure exist.
 
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS app_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email TEXT NOT NULL,
@@ -300,4 +298,3 @@ CREATE TABLE IF NOT EXISTS app_sessions (
 );
 CREATE INDEX IF NOT EXISTS app_sessions_user_expiry_idx ON app_sessions(user_id, expires_at);
 
-COMMIT;
