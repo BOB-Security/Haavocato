@@ -3,7 +3,7 @@
 const translations = {
   en: {
     navServices:'Services',navAbout:'About us',navInsights:'Legal insights',navContact:'Contact',
-    book:'Book a consultation',eyebrow:'LEGAL CONSULTANCY · EGYPT & BEYOND',
+    book:'Book a consultation',clientPortal:'Client portal',eyebrow:'LEGAL CONSULTANCY · EGYPT & BEYOND',
     heroTitle:'Legal clarity.<br><em>Confident next steps.</em>',
     heroLead:'Thoughtful legal guidance for individuals and businesses, delivered with professionalism, transparency, and care.',
     startRequest:'Start a request',exploreServices:'Explore our services',proof:'A clear process, from first contact to next steps.',
@@ -36,7 +36,7 @@ const translations = {
   },
   ar: {
     navServices:'الخدمات',navAbout:'من نحن',navInsights:'رؤى قانونية',navContact:'تواصل معنا',
-    book:'احجز استشارة',eyebrow:'استشارات قانونية · مصر وخارجها',
+    book:'احجز استشارة',clientPortal:'بوابة العميل',eyebrow:'استشارات قانونية · مصر وخارجها',
     heroTitle:'وضوح قانوني.<br><em>خطوات واثقة.</em>',
     heroLead:'إرشاد قانوني مدروس للأفراد والشركات، بمهنية وشفافية واهتمام.',
     startRequest:'ابدأ طلبًا',exploreServices:'استكشف خدماتنا',proof:'خطوات واضحة من أول تواصل وحتى تحديد الخطوة التالية.',
