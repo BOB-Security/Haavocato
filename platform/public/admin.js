@@ -15,6 +15,7 @@ let requests=[];
 let appointments=[];
 let availabilityRules=[];
 let lawyers=[];
+let paymentItems=[];
 
 const requestStatuses={new:'جديد',triage:'فرز أولي',awaiting_client:'بانتظار العميل',assigned:'تم الإسناد',in_progress:'قيد التنفيذ',awaiting_payment:'بانتظار الدفع',scheduled:'مجدول',completed:'مكتمل',declined:'مرفوض',cancelled:'ملغي',archived:'مؤرشف'};
 const appointmentStatuses={requested:'بانتظار التأكيد',confirmed:'مؤكد',rescheduled:'أعيدت جدولته',completed:'مكتمل',cancelled:'ملغي',no_show:'لم يحضر'};
@@ -165,6 +166,51 @@ async function loadAvailability(){
   }catch(error){setMessage(message,error.message,false);}
 }
 
+
+const paymentLabels={pending:'معلق',submitted:'تم الإرسال',under_review:'قيد المراجعة',confirmed:'مؤكد',rejected:'مرفوض',refunded:'مسترد',cancelled:'ملغي'};
+const paymentTransitions={pending:['submitted','cancelled'],submitted:['under_review','confirmed','rejected'],under_review:['confirmed','rejected'],confirmed:['refunded'],rejected:['submitted','cancelled'],refunded:[],cancelled:[]};
+const paymentMethods={vodafone_cash:'Vodafone Cash',instapay:'InstaPay',bank_transfer:'Bank transfer',card:'Card',other:'Other'};
+async function loadPayments(){
+  const container=document.getElementById('adminPaymentList');
+  const message=document.getElementById('adminPaymentsMessage');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/payments/admin');paymentItems=Array.isArray(data.payments)?data.payments:[];
+    if(!paymentItems.length){container.append(node('p','request-meta','لا توجد سجلات مدفوعات بعد.'));setMessage(message,'تم تحميل السجلات.',true);return;}
+    paymentItems.forEach(payment=>{
+      const card=node('article','payment-admin-card');
+      const top=node('div','payment-admin-top');
+      const info=node('div','');
+      info.append(node('h3','',(payment.client_name||'عميل')+' · '+(payment.reference_code||'طلب')));
+      info.append(node('p','',(paymentMethods[payment.method]||payment.method)+' · '+(payment.amount==null?'المبلغ غير محدد':Number(payment.amount).toFixed(2)+' '+payment.currency)+' · '+formatDate(payment.created_at)));
+      top.append(info,node('span','status-pill',paymentLabels[payment.status]||payment.status));
+      card.append(top);
+      card.append(node('div','payment-admin-note','مرجع التحويل: '+(payment.provider_reference||'—')+(payment.client_note?'\nملاحظة العميل: '+payment.client_note:'')));
+      const transitions=paymentTransitions[payment.status]||[];
+      if(transitions.length){
+        const controls=node('div','payment-admin-controls');
+        const label=node('label','','قرار المراجعة');
+        const select=document.createElement('select');
+        transitions.forEach(value=>select.add(new Option(paymentLabels[value],value)));
+        label.append(select);
+        const noteLabel=node('label','','ملاحظة داخلية (اختياري)');
+        const note=document.createElement('input');note.maxLength=2000;note.placeholder='سبب القرار أو ملاحظة المراجعة';noteLabel.append(note);
+        const save=node('button','button button-outline','حفظ القرار');save.type='button';
+        save.addEventListener('click',async()=>{
+          save.disabled=true;
+          try{
+            await api('/api/payments/admin/'+encodeURIComponent(payment.id)+'/status',{method:'PATCH',body:JSON.stringify({status:select.value,internalNote:note.value||null})});
+            setMessage(message,'تم حفظ قرار المراجعة.',true);await loadPayments();
+          }catch(error){setMessage(message,error.message,false);}finally{save.disabled=false;}
+        });
+        controls.append(label,noteLabel,save);card.append(controls);
+      }
+      container.append(card);
+    });
+    setMessage(message,'تم تحميل سجلات المدفوعات.',true);
+  }catch(error){setMessage(message,error.message,false);}
+}
+
 document.getElementById('availabilityForm').addEventListener('submit',async(event)=>{
   event.preventDefault();
   const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
@@ -188,13 +234,14 @@ loginForm.addEventListener('submit',async(event)=>{
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
 });
 logoutButton.addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST',body:'{}'});}catch{}requests=[];appointments=[];showLogin();loginMessage.textContent='تم تسجيل الخروج.';});
 refreshButton.addEventListener('click',loadRequests);
 document.getElementById('refreshAppointments').addEventListener('click',loadAppointments);
+document.getElementById('refreshPayments').addEventListener('click',loadPayments);
 searchInput.addEventListener('input',renderRequests);
 statusFilter.addEventListener('change',renderRequests);
 
