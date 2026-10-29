@@ -187,7 +187,8 @@ function formatDate(value){
 
 document.getElementById('appointmentForm').addEventListener('submit',async(event)=>{
   event.preventDefault();
-  const selected=availableSlots[Number(appointmentSlot.value)];
+  const selectedIndex=appointmentSlot.value;
+  const selected=selectedIndex===''?null:availableSlots[Number(selectedIndex)];
   if(!selected){appointmentMessage.textContent='Choose an available slot first.';return;}
   const button=document.getElementById('bookAppointment');button.disabled=true;appointmentMessage.textContent='Submitting appointment request…';appointmentMessage.classList.remove('success');
   try{
