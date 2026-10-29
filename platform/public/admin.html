@@ -59,6 +59,51 @@
         <p id="adminPaymentsMessage" class="notice" role="status" aria-live="polite"></p>
         <div id="adminPaymentList" class="request-list"></div>
       </section>
+      <section class="workspace-panel cms-panel">
+        <div class="workspace-toolbar"><div><h2>إدارة محتوى الموقع</h2><p>حرر الخدمات والمقالات وملفات الشركاء والصفحات باللغتين.</p></div><button id="refreshCms" class="button button-outline" type="button">تحديث المحتوى ↻</button></div>
+        <div class="cms-tabs" role="tablist"><button class="active" data-cms-tab="services" type="button">الخدمات</button><button data-cms-tab="pages" type="button">الصفحات</button><button data-cms-tab="insights" type="button">المقالات</button><button data-cms-tab="partners" type="button">الشركاء</button></div>
+        <p id="cmsMessage" class="notice" role="status" aria-live="polite"></p>
+        <div class="cms-content" data-cms-panel="services">
+          <form id="cmsServiceForm" class="cms-form">
+            <label>اختر خدمة<select id="cmsServiceSelect"><option value="">اختر الخدمة للتعديل</option></select></label>
+            <label>الاسم بالإنجليزية<input id="cmsServiceNameEn" maxlength="200" required></label><label>الاسم بالعربية<input id="cmsServiceNameAr" maxlength="200" required></label>
+            <label>ملخص بالإنجليزية<textarea id="cmsServiceSummaryEn" rows="2" maxlength="1000"></textarea></label><label>ملخص بالعربية<textarea id="cmsServiceSummaryAr" rows="2" maxlength="1000"></textarea></label>
+            <label>الوصف بالإنجليزية<textarea id="cmsServiceDescriptionEn" rows="4" maxlength="5000"></textarea></label><label>الوصف بالعربية<textarea id="cmsServiceDescriptionAr" rows="4" maxlength="5000"></textarea></label>
+            <label>نوع الخدمة<select id="cmsServiceType"><option value="consultation">استشارة</option><option value="document_review">مراجعة مستند</option><option value="document_drafting">صياغة مستند</option><option value="translation">ترجمة</option><option value="company_formation">تأسيس شركة</option><option value="litigation">نزاع أو تقاضٍ</option><option value="course">دورة</option><option value="other">أخرى</option></select></label>
+            <label>ترتيب العرض<input id="cmsServiceOrder" type="number" min="0" max="10000" value="0"></label><label class="cms-checkbox"><input id="cmsServicePublished" type="checkbox"> منشورة للعامة</label>
+            <button class="button" type="submit">حفظ الخدمة</button>
+          </form>
+        </div>
+        <div class="cms-content hidden" data-cms-panel="pages">
+          <form id="cmsPageForm" class="cms-form">
+            <label>المعرّف (slug)<input id="cmsPageSlug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="120" required></label>
+            <label>العنوان بالإنجليزية<input id="cmsPageTitleEn" maxlength="200" required></label><label>العنوان بالعربية<input id="cmsPageTitleAr" maxlength="200" required></label>
+            <label>المحتوى بالإنجليزية<textarea id="cmsPageBodyEn" rows="5" maxlength="100000"></textarea></label><label>المحتوى بالعربية<textarea id="cmsPageBodyAr" rows="5" maxlength="100000"></textarea></label>
+            <label>حالة النشر<select id="cmsPageStatus"><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></label>
+            <button class="button" type="submit">حفظ الصفحة</button>
+          </form><div id="cmsPageList" class="cms-item-list"></div>
+        </div>
+        <div class="cms-content hidden" data-cms-panel="insights">
+          <form id="cmsInsightForm" class="cms-form">
+            <label>المعرّف (slug)<input id="cmsInsightSlug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="120" required></label>
+            <label>العنوان بالإنجليزية<input id="cmsInsightTitleEn" maxlength="240" required></label><label>العنوان بالعربية<input id="cmsInsightTitleAr" maxlength="240" required></label>
+            <label>مقتطف بالإنجليزية<textarea id="cmsInsightExcerptEn" rows="2" maxlength="1000"></textarea></label><label>مقتطف بالعربية<textarea id="cmsInsightExcerptAr" rows="2" maxlength="1000"></textarea></label>
+            <label>المقال بالإنجليزية<textarea id="cmsInsightBodyEn" rows="5" maxlength="100000"></textarea></label><label>المقال بالعربية<textarea id="cmsInsightBodyAr" rows="5" maxlength="100000"></textarea></label>
+            <label>التصنيف<input id="cmsInsightCategory" maxlength="80"></label><label>حالة النشر<select id="cmsInsightStatus"><option value="draft">مسودة</option><option value="published">منشور</option><option value="archived">مؤرشف</option></select></label>
+            <button class="button" type="submit">حفظ المقال</button>
+          </form><div id="cmsInsightList" class="cms-item-list"></div>
+        </div>
+        <div class="cms-content hidden" data-cms-panel="partners">
+          <form id="cmsPartnerForm" class="cms-form">
+            <input id="cmsPartnerId" type="hidden">
+            <label>الاسم بالإنجليزية<input id="cmsPartnerNameEn" maxlength="160" required></label><label>الاسم بالعربية<input id="cmsPartnerNameAr" maxlength="160" required></label>
+            <label>المسمى بالإنجليزية<input id="cmsPartnerTitleEn" maxlength="160"></label><label>المسمى بالعربية<input id="cmsPartnerTitleAr" maxlength="160"></label>
+            <label>السيرة بالإنجليزية<textarea id="cmsPartnerBioEn" rows="4" maxlength="5000"></textarea></label><label>السيرة بالعربية<textarea id="cmsPartnerBioAr" rows="4" maxlength="5000"></textarea></label>
+            <label>ترتيب العرض<input id="cmsPartnerOrder" type="number" min="0" max="10000" value="0"></label><label class="cms-checkbox"><input id="cmsPartnerPublished" type="checkbox"> منشور للعامة</label>
+            <button class="button" type="submit">حفظ ملف الشريك</button><button id="cmsPartnerNew" class="button button-outline" type="button">ملف جديد</button>
+          </form><div id="cmsPartnerList" class="cms-item-list"></div>
+        </div>
+      </section>
       <p class="dashboard-footnote">تُعرض بيانات العملاء للمخولين فقط. لا تُدخل بيانات سرية في الملاحظات العامة، ولا تشارك روابط الجلسات.</p>
     </section>
   </main>
