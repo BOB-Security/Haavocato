@@ -14,7 +14,7 @@ function readMigration(name) {
 
 test('database migrations are ordered, uniquely versioned, and sequential', () => {
   const files = fs.readdirSync(migrationsDir)
-    .filter((name) => /^\\d{3}_[a-z0-9_-]+\\.sql$/.test(name))
+    .filter((name) => /^\d{3}_[a-z0-9_-]+\.sql$/.test(name))
     .sort();
 
   assert.ok(files.length > 0, 'at least one migration must exist');
@@ -32,9 +32,9 @@ test('authentication schema includes the password salt used by the login route',
   const authRoute = fs.readFileSync(path.join(root, 'src', 'routes', 'auth.js'), 'utf8');
 
   assert.match(initialSchema, /CREATE TABLE IF NOT EXISTS app_users/i);
-  assert.match(saltMigration, /ALTER TABLE\\s+app_users\\s+ADD COLUMN IF NOT EXISTS password_salt/i);
+  assert.match(saltMigration, /ALTER TABLE\s+app_users\s+ADD COLUMN IF NOT EXISTS password_salt/i);
   assert.match(authRoute, /SELECT id, password_hash, password_salt, status/i);
-  assert.match(authRoute, /user\\.password_salt/);
+  assert.match(authRoute, /user\.password_salt/);
 });
 
 test('staff invitation token purpose is allowed by the auth-token schema', () => {
@@ -50,7 +50,7 @@ test('staff invitation token purpose is allowed by the auth-token schema', () =>
 test('migration runner refuses edits to already-applied migration files', () => {
   const runner = fs.readFileSync(path.join(root, 'scripts', 'migrate.js'), 'utf8');
 
-  assert.match(runner, /createHash\\('sha256'\\)/);
+  assert.match(runner, /createHash\('sha256'\)/);
   assert.match(runner, /checksum_sha256/);
-  assert.match(runner, /was modified\\. Create a new migration instead/);
+  assert.match(runner, /was modified\. Create a new migration instead/);
 });
