@@ -94,8 +94,8 @@ async function claimBatch(pool) {
             AND (locked_at IS NULL OR locked_at < NOW() - INTERVAL '10 minutes')
             AND attempt_count < $1
           ORDER BY created_at
-          FOR UPDATE SKIP LOCKED
           LIMIT $2
+          FOR UPDATE SKIP LOCKED
        )
        UPDATE notification_events n
           SET locked_at=NOW(),attempt_count=n.attempt_count+1
