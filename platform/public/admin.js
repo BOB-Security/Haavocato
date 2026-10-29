@@ -376,6 +376,7 @@ document.getElementById('refreshAudit').addEventListener('click',loadAudit);
 
 let cmsServices=[],cmsPages=[],cmsInsights=[],cmsPartners=[];
 let staffUsers=[],staffRoles=[];
+let currentPermissions=new Set();
 
 const staffStatusLabels={pending:'بانتظار الدعوة',active:'نشط',suspended:'موقوف',closed:'مغلق'};
 const roleLabels={operations_admin:'مدير العمليات',intake_staff:'استقبال الطلبات',lawyer:'محامٍ',finance_staff:'مسؤول مالي',content_editor:'محرر محتوى'};
@@ -463,7 +464,7 @@ document.getElementById('refreshStaff').addEventListener('click',async()=>{await
 
 document.querySelectorAll('[data-cms-tab]').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('[data-cms-tab]').forEach(item=>item.classList.toggle('active',item===button));
-  document.querySelectorAll('[data-cms-panel]').forEach(panel=>panel.classList.toggle('hidden',panel.dataset.cmsPanel!==button.dataset.cmsTab));
+  document.querySelectorAll('[data-cms-panel]').forEach(panel=>panel.classList.toggle('hidden',panel.dataset.cmsPanel!==button.dataset.cmsTab||!currentPermissions.has(panel.dataset.permission)));
 }));
 function cmsMessage(text,success=false){setMessage(document.getElementById('cmsMessage'),text,success);}
 function cmsItem(container,title,subtitle,onClick){
@@ -623,11 +624,41 @@ document.getElementById('availabilityForm').addEventListener('submit',async(even
   finally{button.disabled=false;}
 });
 
+
+function applyDashboardPermissions(permissions){
+  currentPermissions=new Set(Array.isArray(permissions)?permissions:[]);
+  const moduleNeeds={
+    requests:['requests.read'],appointments:['appointments.read'],availability:['availability.manage'],
+    payments:['payments.read'],documents:['documents.metadata.read'],staff:['users.read'],
+    clients:['clients.read'],audit:['audit.read'],notifications:['notifications.manage'],
+    content:['services.manage','cms.manage','partners.manage']
+  };
+  document.querySelectorAll('[data-module]').forEach(element=>{
+    const needs=moduleNeeds[element.dataset.module]||[];
+    const allowed=needs.some(permission=>currentPermissions.has(permission));
+    element.classList.toggle('hidden',!allowed);
+  });
+  document.querySelectorAll('[data-permission]').forEach(element=>{
+    if(element.matches('[data-cms-panel]')) {
+      if(!currentPermissions.has(element.dataset.permission))element.classList.add('hidden');
+      return;
+    }
+    element.hidden=!currentPermissions.has(element.dataset.permission);
+  });
+  const availableTabs=[...document.querySelectorAll('[data-cms-tab]')].filter(item=>currentPermissions.has(item.dataset.permission));
+  if(availableTabs.length){
+    const active=availableTabs.find(item=>item.classList.contains('active'))||availableTabs[0];
+    document.querySelectorAll('[data-cms-tab]').forEach(item=>item.classList.toggle('active',item===active));
+    document.querySelectorAll('[data-cms-panel]').forEach(panel=>panel.classList.toggle('hidden',panel.dataset.cmsPanel!==active.dataset.cmsTab||!currentPermissions.has(panel.dataset.permission)));
+  }
+}
+
 loginForm.addEventListener('submit',async(event)=>{
   event.preventDefault();const button=loginForm.querySelector('button[type="submit"]');button.disabled=true;loginMessage.textContent='جارٍ التحقق…';
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
-    document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
+    document.getElementById('password').value='';loginMessage.textContent='';
+    const identity=await api('/api/auth/me');applyDashboardPermissions(identity.user.permissions||[]);showDashboard();
     await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadClients(),loadAudit(),loadCms()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
@@ -643,7 +674,7 @@ statusFilter.addEventListener('change',renderRequests);
 
 (async function init(){
   try{
-    await api('/api/auth/me');showDashboard();
+    const identity=await api('/api/auth/me');applyDashboardPermissions(identity.user.permissions||[]);showDashboard();
     await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadClients(),loadAudit(),loadCms()]);
   }catch{showLogin();}
 })();
