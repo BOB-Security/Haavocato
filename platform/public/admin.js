@@ -109,7 +109,7 @@ async function loadAppointments(){
       const details=node('div','request-fields');
       details.append(field('نوع الاستشارة',item.consultation_mode==='video'?'فيديو':item.consultation_mode==='phone'?'هاتف':'حضوري'),field('الحالة',appointmentStatuses[item.status]||item.status),field('المنطقة الزمنية',item.timezone));
       const controls=node('div','admin-appointment-controls');
-      const transitions=appointmentTransitions[item.status]||[];
+      const transitions=Array.isArray(item.allowedTransitions)?item.allowedTransitions:(appointmentTransitions[item.status]||[]);
       if(transitions.length){
         const label=node('label','','تغيير الحالة');
         const select=document.createElement('select');
