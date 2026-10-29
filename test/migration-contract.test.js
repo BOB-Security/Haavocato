@@ -40,7 +40,7 @@ test('authentication schema includes the password salt used by the login route',
 test('staff invitation token purpose is allowed by the auth-token schema', () => {
   const tokenMigration = readMigration('004_auth_tokens.sql');
   const inviteMigration = readMigration('010_staff_invites.sql');
-  const accountRoute = fs.readFileSync(path.join(root, 'src', 'routes', 'admin-staff.js'), 'utf8');
+  const accountRoute = fs.readFileSync(path.join(root, 'src', 'routes', 'admin-users.js'), 'utf8');
 
   assert.match(tokenMigration, /auth_tokens/i);
   assert.match(inviteMigration, /staff_invite/i);
