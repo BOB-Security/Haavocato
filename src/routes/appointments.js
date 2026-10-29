@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { requirePermission } = require('../middleware/require-permission');
+const { enqueueEmail } = require('../services/notification-service');
 
 const SLOT_MINUTES = 30;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -114,7 +115,7 @@ function createAppointmentRouter(pool) {
 
         if (requestId) {
           const ownedRequest = await client.query(
-            'SELECT id FROM service_requests WHERE id = $1 AND client_user_id = $2 LIMIT 1',
+            'SELECT id, reference_code, service_name_snapshot FROM service_requests WHERE id = $1 AND client_user_id = $2 LIMIT 1',
             [requestId, req.auth.userId]
           );
           if (!ownedRequest.rows[0]) {
@@ -174,6 +175,18 @@ function createAppointmentRouter(pool) {
            VALUES ($1, 'appointment.requested', 'appointment', $2, 'success')`,
           [req.auth.userId, inserted.rows[0].id]
         );
+        const clientInfo = await client.query('SELECT email, preferred_language FROM app_users WHERE id = $1 LIMIT 1', [req.auth.userId]);
+        await enqueueEmail(client, {
+          recipientEmail: clientInfo.rows[0]?.email,
+          templateCode: 'appointment_requested',
+          relatedRequestId: requestId,
+          metadata: {
+            startsAt: inserted.rows[0].starts_at,
+            mode,
+            referenceCode: requestId ? (await client.query('SELECT reference_code FROM service_requests WHERE id = $1', [requestId])).rows[0]?.reference_code : '',
+            language: clientInfo.rows[0]?.preferred_language || 'en'
+          }
+        });
         await client.query('COMMIT');
         return res.status(201).json({ appointment: inserted.rows[0], message: 'Appointment request submitted for confirmation.' });
       } catch (error) {
