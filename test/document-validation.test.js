@@ -27,3 +27,20 @@ test('sanitizes path separators and line breaks from uploaded filenames', () => 
   assert.equal(name.includes('\n'), false);
   assert.ok(name.endsWith('.pdf'));
 });
+
+test('document scan status and its audit event share one database transaction', () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'routes', 'documents.js'), 'utf8');
+  const start = source.indexOf('function createDocumentScanWebhook');
+  const end = source.indexOf('module.exports', start);
+  assert.ok(start >= 0 && end > start, 'scan webhook must exist');
+  const webhook = source.slice(start, end);
+  const begin = webhook.indexOf("client.query('BEGIN')");
+  const update = webhook.indexOf('UPDATE private_documents SET scan_status');
+  const audit = webhook.indexOf('INSERT INTO audit_events');
+  const commit = webhook.indexOf("client.query('COMMIT')");
+  assert.ok(begin >= 0 && update > begin);
+  assert.ok(audit > update && commit > audit);
+  assert.match(webhook, /if\s*\(client\s*&&\s*transactionStarted\)\s*await client\.query\('ROLLBACK'\)/);
+});
