@@ -78,7 +78,7 @@ function renderRequests(){
         item.status=result.request.status;renderRequests();setMessage(dashboardMessage,'تم تحديث حالة الطلب بنجاح.',true);
       }catch(error){setMessage(dashboardMessage,error.message,false);}finally{save.disabled=false;}
     });
-    controls.append(label,save);card.append(head,fields,description,controls);requestList.append(card);
+    controls.append(label,save);controls.hidden=!currentPermissions.has('requests.status.update');card.append(head,fields,description,controls);requestList.append(card);
   });
 }
 
@@ -317,7 +317,7 @@ async function loadClients(){
           try{await api('/api/admin/clients/'+encodeURIComponent(client.id)+'/status',{method:'PATCH',body:JSON.stringify({status:next})});setMessage(message,'تم تحديث حالة العميل.',true);await loadClients();}
           catch(error){setMessage(message,error.message,false);}finally{toggle.disabled=false;}
         });
-        actions.append(toggle);
+        toggle.hidden=!currentPermissions.has('clients.update');actions.append(toggle);
       }
       card.append(info,stats,actions);container.append(card);
     });
@@ -412,7 +412,7 @@ async function loadStaffUsers(){
             try{const result=await api('/api/admin/users/'+encodeURIComponent(user.id)+'/resend-invite',{method:'POST',body:'{}'});setMessage(message,result.message||'تم إرسال الدعوة.',true);}
             catch(error){setMessage(message,error.message,false);}finally{resend.disabled=false;}
           });
-          actions.append(resend);
+          resend.hidden=!currentPermissions.has('users.manage');actions.append(resend);
         }
         if(staffRoles.length){
           const roleSelect=document.createElement('select');roleSelect.setAttribute('aria-label','دور '+user.email);
@@ -425,7 +425,7 @@ async function loadStaffUsers(){
             try{await api('/api/admin/users/'+encodeURIComponent(user.id)+'/role',{method:'PATCH',body:JSON.stringify({roleCode:roleSelect.value})});setMessage(message,'تم تحديث دور الحساب.',true);await loadStaffUsers();}
             catch(error){setMessage(message,error.message,false);}finally{saveRole.disabled=false;}
           });
-          actions.append(roleSelect,saveRole);
+          roleSelect.hidden=!currentPermissions.has('roles.manage');saveRole.hidden=!currentPermissions.has('roles.manage');actions.append(roleSelect,saveRole);
         }
         if(['active','suspended'].includes(user.status)){
           const nextStatus=user.status==='active'?'suspended':'active';
@@ -435,7 +435,7 @@ async function loadStaffUsers(){
             try{await api('/api/admin/users/'+encodeURIComponent(user.id)+'/status',{method:'PATCH',body:JSON.stringify({status:nextStatus})});setMessage(message,'تم تحديث حالة الحساب.',true);await loadStaffUsers();}
             catch(error){setMessage(message,error.message,false);}finally{toggle.disabled=false;}
           });
-          actions.append(toggle);
+          toggle.hidden=!currentPermissions.has('users.manage');actions.append(toggle);
         }
       }else actions.append(node('small','', 'حساب مدير أعلى محمي'));
       card.append(actions);container.append(card);
