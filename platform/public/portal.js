@@ -94,7 +94,7 @@ async function showPortal(){
   document.getElementById('welcomeTitle').textContent=data.user.full_name?'Welcome, '+data.user.full_name:'Your client portal';
   document.getElementById('accountEmail').textContent=data.user.email;
   await loadRequests();
-  await Promise.all([loadAppointments(),loadAvailability(),loadPayments()]);
+  await Promise.all([loadAppointments(),loadAvailability(),loadPayments(),loadDocuments()]);
 }
 async function loadRequests(){
   listMessage.textContent='Loading your requests…';requestList.replaceChildren();
@@ -105,6 +105,7 @@ async function loadRequests(){
     empty.classList.toggle('hidden',requestItems.length>0);
     appointmentRequest.replaceChildren(new Option('No linked request',''));
     document.getElementById('paymentRequest').replaceChildren(new Option('Choose a request',''));
+    document.getElementById('documentRequest').replaceChildren(new Option('Choose a request',''));
     requestItems.forEach(item=>{
       const card=document.createElement('article');card.className='portal-request-card';
       const head=document.createElement('div');head.className='portal-request-head';
@@ -141,6 +142,7 @@ async function loadRequests(){
       card.append(head,meta,detailButton,detailPanel);requestList.append(card);
       appointmentRequest.add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
       document.getElementById('paymentRequest').add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
+      document.getElementById('documentRequest').add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
     });
     listMessage.textContent=requestItems.length?'Your requests are up to date.':'';
     listMessage.classList.add('success');
@@ -239,6 +241,68 @@ document.getElementById('appointmentForm').addEventListener('submit',async(event
 });
 
 
+
+const scanLabels={pending:'Pending security scan',clean:'Cleared',quarantined:'Quarantined',failed:'Scan failed',not_scanned:'Not scanned'};
+async function loadDocuments(){
+  const container=document.getElementById('documentList');
+  const status=document.getElementById('documentMessage');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/documents/mine');
+    const documents=Array.isArray(data.documents)?data.documents:[];
+    if(!documents.length){container.append(node('p','muted','No documents uploaded yet.'));return;}
+    documents.forEach(document=>{
+      const card=node('article','payment-record');
+      const info=node('div','');
+      info.append(node('strong','',document.original_filename||'Document'));
+      info.append(node('small','',(document.reference_code||'Request')+' · '+formatBytes(document.byte_size)+' · '+formatDate(document.created_at)));
+      const right=node('div','');
+      const pill=node('span','document-status '+document.scan_status,scanLabels[document.scan_status]||document.scan_status);
+      right.append(pill);
+      if(document.scan_status==='clean'){
+        const download=node('button','document-download','Download file');download.type='button';
+        download.addEventListener('click',async()=>{
+          download.disabled=true;
+          try{
+            const response=await fetch('/api/documents/'+encodeURIComponent(document.id)+'/download',{credentials:'same-origin'});
+            if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(body.error||'Download failed.');}
+            const blob=await response.blob();const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download=document.original_filename||'document';anchor.click();URL.revokeObjectURL(url);
+          }catch(error){status.textContent=error.message;status.classList.remove('success');}
+          finally{download.disabled=false;}
+        });
+        right.append(download);
+      }
+      card.append(info,right);container.append(card);
+    });
+  }catch(error){status.textContent=error.message;status.classList.remove('success');}
+}
+function formatBytes(value){
+  const bytes=Number(value)||0;
+  if(bytes<1024)return bytes+' B';
+  if(bytes<1024*1024)return (bytes/1024).toFixed(1)+' KB';
+  return (bytes/(1024*1024)).toFixed(1)+' MB';
+}
+document.getElementById('documentForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const requestId=document.getElementById('documentRequest').value;
+  const file=document.getElementById('documentFile').files[0];
+  const button=document.getElementById('uploadDocument');
+  const status=document.getElementById('documentMessage');
+  if(!requestId||!file){status.textContent='Choose a request and file first.';return;}
+  if(file.size>10*1024*1024){status.textContent='The file exceeds the 10 MB limit.';return;}
+  button.disabled=true;status.textContent='Uploading to private storage…';status.classList.remove('success');
+  try{
+    const formData=new FormData();formData.append('requestId',requestId);formData.append('file',file);
+    const response=await fetch('/api/documents',{method:'POST',credentials:'same-origin',body:formData,headers:{Accept:'application/json'}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(data.error||'Upload failed.');
+    status.textContent=data.message||'Document uploaded and awaiting security scan.';status.classList.add('success');
+    document.getElementById('documentFile').value='';
+    await loadDocuments();
+  }catch(error){status.textContent=error.message;status.classList.remove('success');}
+  finally{button.disabled=false;}
+});
+
 const paymentLabels={pending:'Pending',submitted:'Submitted',under_review:'Under review',confirmed:'Confirmed',rejected:'Rejected',refunded:'Refunded',cancelled:'Cancelled'};
 const paymentMethods={vodafone_cash:'Vodafone Cash',instapay:'InstaPay',bank_transfer:'Bank transfer'};
 async function loadPayments(){
@@ -280,6 +344,6 @@ document.getElementById('paymentForm').addEventListener('submit',async(event)=>{
 });
 
 function showLogin(){dashboard.classList.add('hidden');authSection.classList.remove('hidden');logout.hidden=true;}
-document.getElementById('refreshPortal').addEventListener('click',async()=>{await loadRequests();await Promise.all([loadAppointments(),loadAvailability(),loadPayments()]);});
+document.getElementById('refreshPortal').addEventListener('click',async()=>{await loadRequests();await Promise.all([loadAppointments(),loadAvailability(),loadPayments(),loadDocuments()]);});
 logout.addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST',body:'{}'});}catch{}requestItems=[];showLogin();setMessage('You have signed out.',true);});
 (async()=>{try{await api('/api/auth/me');await showPortal();}catch{showLogin();}})();
