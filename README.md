@@ -1,69 +1,83 @@
-# Haavocato
+# HA Advocates Legal Consultancy — Replacement Platform
 
-Bilingual Arabic/English starter for the Haavocato legal-services platform.
+This branch is a clean replacement implementation for the HA Advocates legal-services website and client operations workspace. It is intentionally isolated from `main`; do not deploy it to production until the acceptance gates in `docs/REBUILD_PLAN.md` are completed.
 
-## Current scope
+## Current implementation
 
-- Responsive public landing page with Arabic and English content.
-- Service overview and consultation request form.
-- Node.js/Express server with security headers, request-size limits, rate limiting, input validation, and a health endpoint.
-- PostgreSQL persistence for consultation requests when `DATABASE_URL` is configured.
-- GitHub Actions validation workflow and an Azure App Service deployment workflow.
+- Public bilingual website (English default, Arabic available).
+- Dedicated Home, About, Services, Partners, Legal Insights, and Contact pages.
+- Published service catalogue backed by PostgreSQL.
+- Client account registration with email verification and password recovery using Resend.
+- Client portal for linked request tracking, public status timeline, appointment requests, and payment-transfer records.
+- Admin workspace for request triage, appointment confirmation, availability rules, payment review, and bilingual CMS editing.
+- Role/permission checks, revocable database-backed sessions, security headers, origin checks for browser mutations, rate limits, audit events, and content revision snapshots.
+- Transactional PostgreSQL migration runner with immutable SHA-256 checksums.
 
-## Run locally
+## Local setup
 
-Requirements: Node.js 22+ and PostgreSQL.
+Requirements: Node.js 20 or newer and PostgreSQL 13 or newer.
 
-```bash
-cp .env.example .env
-npm install
+1. Install dependencies:
+
+   ```sh
+   npm install
+   ```
+
+2. Copy `.env.example` to `.env` and configure at minimum:
+   - `DATABASE_URL`
+   - `PGSSL` if your PostgreSQL service requires TLS
+   - `PUBLIC_ORIGIN`
+   - `SESSION_SECRET` (at least 32 random bytes in production)
+   - `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for verification and reset messages
+
+3. Apply database migrations to the intended empty/new database:
+
+   ```sh
+   npm run migrate
+   ```
+
+   The runner records applied migrations and refuses to continue if an applied migration file has changed. Do not point it at an existing production database without an approved migration and verified backup.
+
+4. Create the first administrator once, using protected environment variables and the intended database:
+
+   ```sh
+   BOOTSTRAP_ADMIN_EMAIL=admin@example.com BOOTSTRAP_ADMIN_PASSWORD='use-a-unique-16-plus-character-secret' node scripts/bootstrap-admin.js
+   ```
+
+   Run the command in a secure shell or secret manager. Never commit real credentials. The bootstrap command refuses to create another super administrator or elevate an existing account.
+
+5. Start the replacement application:
+
+   ```sh
+   npm start
+   ```
+
+   The site is served at `PUBLIC_ORIGIN`; staff workspace is at `/admin`, client workspace at `/portal`.
+
+## Validation
+
+Run before each review or deployment:
+
+```sh
 npm run check
 npm test
-npm start
 ```
 
-Set `DATABASE_URL` in the environment before starting if you want consultation requests to be saved. Do not commit real secrets or database credentials.
+The CI workflow runs syntax checks and automated tests on `rebuild/**` branches. A green syntax check alone does not establish production readiness; database integration, authorization, migration rehearsal, backup restoration, security review, and browser acceptance testing are required.
 
-Health check: `GET /api/health`.
+## Important boundaries / not yet production-ready
 
-## Azure App Service deployment
+- **Private legal-document upload and storage are not yet implemented.** Do not send confidential files through the public form or treat the current portal as a secure document exchange system.
+- Card payments are not processed. The current payment module records local transfers for staff review; it does not charge cards or provide official account instructions.
+- Appointment slots depend on configured lawyer profiles and availability rules. Booking requests remain pending until staff confirms them.
+- Published partner profiles, official email/social links, logo assets, office details, and approved legal article content must be supplied and verified by the firm.
+- The CMS saves revisions and serves published partners/articles/pages through its content APIs. Static legal page copy remains partly specification-based and requires final owner/legal approval before launch.
+- The real production database has not been inspected by this branch's implementation. No live records were migrated, and no production database was modified.
+- Do not switch the production hostname, delete production data, or remove the legacy deployment until migration counts reconcile, a backup restore has been tested, owner acceptance is recorded, and a rollback path is ready.
 
-The workflow at `.github/workflows/azure-deploy.yml` deploys the `main` branch after the repository is configured with:
+## Key project documents
 
-- Repository variable `AZURE_WEBAPP_NAME`: the dedicated Haavocato Azure Web App name.
-- Repository secret `AZURE_WEBAPP_PUBLISH_PROFILE`: the publish profile downloaded from that exact Azure Web App.
-- App Service application setting `DATABASE_URL`: PostgreSQL connection string.
-- App Service application setting `PGSSL=true` when the database requires TLS.
-- App Service application setting `NODE_ENV=production`.
-
-Use a dedicated Haavocato app; do not point this workflow at the unrelated ATSH-AI company website. Configure PostgreSQL with TLS and restricted network access before accepting real client requests.
-
-## Important limitations
-
-This is the initial public-site and consultation-intake foundation, not the completed legal-services management platform. Customer accounts, staff/admin roles, appointment scheduling, private document storage, notifications, audit trails, and production data-retention controls still require implementation and verification. Do not upload confidential client documents until those controls are in place.
-
-The product reference `PRODUCT_REFERENCE_LEGAL_SERVICES_AR.md` is retained unchanged.
-
-## Admin dashboard authentication
-
-The dashboard owner email defaults to `hazem.mustafa17@gmail.com` (optional override: `ADMIN_EMAIL`). First-time activation and password reset send a six-digit, single-use code to this mailbox; codes expire after 10 minutes and allow at most five attempts. The owner chooses a permanent password of at least 12 characters, stored as a salted scrypt hash.
-
-Configure these App Service environment variables in Azure:
-- `DATABASE_URL`: PostgreSQL connection string.
-- `ADMIN_SESSION_SECRET`: random secret at least 32 characters.
-- `RESEND_API_KEY`: Resend API key.
-- `RESEND_FROM_EMAIL`: sender address verified with Resend.
-- `NODE_ENV=production`; `PGSSL=true` if the database provider requires TLS.
-
-Email activation/reset is not operational until the database is available, the sender is verified in Resend, and all required settings are supplied. Keep all secrets out of GitHub and chat.\n
-
-The Arabic admin dashboard is available at `/admin.html`. Before using it, configure these App Service application settings in Azure (Configuration → Application settings), then restart the app:
-
-- `ADMIN_USERNAME`: your chosen admin login name.
-- `ADMIN_PASSWORD`: a strong, unique password; do not commit it to GitHub or share it in chat.
-- `ADMIN_SESSION_SECRET`: a random secret of at least 32 characters, kept private.
-- `DATABASE_URL`: PostgreSQL connection string for saving and listing consultation requests.
-- `PGSSL=true` when your PostgreSQL provider requires TLS.
-- `NODE_ENV=production`.
-
-The dashboard uses an eight-hour signed, HttpOnly session cookie, limits login attempts, and requires authentication for listing requests or changing their status. If PostgreSQL is not configured, the dashboard can show the login page but cannot load or save consultation requests. Do not use real client data until database access, backups, and privacy controls have been verified.
+- `docs/REBUILD_PLAN.md` — product scope, delivery gates, architecture, dependencies.
+- `docs/SCREEN_AND_WORKFLOW_MAP.md` — screen inventory and core workflows.
+- `docs/LEGACY_DATA_AUDIT.md` — source-code data inventory and safe migration procedure.
+- `db/migrations/` — versioned schema, role permissions, service catalogue, and auth/content migrations.
