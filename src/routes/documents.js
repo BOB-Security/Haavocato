@@ -222,4 +222,4 @@ function createDocumentScanWebhook(pool) {
   return router;
 }
 
-module.exports = { createDocumentRouter, createDocumentScanWebhook };
+module.exports = { createDocumentRouter, createDocumentScanWebhook, safeFilename, validateFile };
