@@ -6,6 +6,8 @@ const { requirePermission } = require('../middleware/require-permission');
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const APPOINTMENT_TRANSITIONS = Object.freeze({ requested: new Set(['confirmed','cancelled']), confirmed: new Set(['rescheduled','completed','cancelled','no_show']), rescheduled: new Set(['confirmed','completed','cancelled','no_show']), completed: new Set(), cancelled: new Set(), no_show: new Set() });
 const APPOINTMENT_STATUSES = new Set(Object.keys(APPOINTMENT_TRANSITIONS));
+function timeSeconds(value) { const parts = value.split(':').map(Number); return parts[0] * 3600 + parts[1] * 60 + (parts[2] || 0); }
+function validTimezone(value) { try { new Intl.DateTimeFormat('en-US', { timeZone: value }); return true; } catch { return false; } }
 
 function createAdminAppointmentRouter(pool) {
   const router = express.Router();
