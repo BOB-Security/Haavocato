@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#132a43">
+  <title>لوحة إدارة HA Advocates</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body class="admin-body">
+  <header class="admin-topbar">
+    <a class="brand" href="/" aria-label="العودة للموقع"><span class="brand-mark">HA</span><span class="brand-copy"><strong>HA Advocates</strong><small>إدارة المنصة القانونية</small></span></a>
+    <div class="topbar-actions"><a href="/" class="quiet-link">عرض الموقع ↗</a><button id="logoutButton" class="button button-quiet hidden" type="button">تسجيل الخروج</button></div>
+  </header>
+  <main class="admin-main">
+    <section id="loginPanel" class="auth-shell">
+      <div class="auth-aside"><span class="auth-symbol">§</span><p class="eyebrow">HA ADVOCATES · PRIVATE WORKSPACE</p><h1>إدارة أكثر وضوحًا.<br><em>خدمة أكثر تنظيمًا.</em></h1><p>مساحة عمل داخلية لمتابعة الطلبات، تنظيم الأولويات، وتسجيل القرارات التشغيلية.</p><ul><li>صلاحيات حسب الدور</li><li>جلسات آمنة قابلة للإلغاء</li><li>سجل للعمليات الحساسة</li></ul></div>
+      <div class="auth-card"><p class="eyebrow">دخول الموظفين</p><h2 id="authTitle">مرحبًا بعودتك</h2><p class="muted">استخدم حسابًا معتمدًا من إدارة النظام.</p>
+        <form id="loginForm"><label for="email">البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" required maxlength="254"><label for="password">كلمة المرور</label><input id="password" type="password" autocomplete="current-password" required maxlength="200"><button class="button auth-submit" type="submit">تسجيل الدخول <span>↗</span></button></form>
+        <p id="loginMessage" class="notice" role="status" aria-live="polite"></p><p class="auth-footnote">لا يوجد حساب افتراضي. يجب إنشاء أول مدير بأمر التهيئة الآمن بعد تجهيز قاعدة البيانات.</p>
+      </div>
+    </section>
+
+    <section id="dashboardPanel" class="dashboard hidden">
+      <div class="dashboard-heading"><div><p class="eyebrow">مركز العمليات</p><h1>لوحة المتابعة</h1><p class="muted">نظرة تشغيلية على طلبات الخدمات القانونية.</p></div><div class="heading-actions"><span class="secure-pill"><span></span> جلسة موثقة</span><button id="refreshButton" class="button button-outline" type="button">تحديث البيانات ↻</button></div></div>
+      <div class="metric-grid">
+        <article class="metric-card"><span class="metric-label">إجمالي الطلبات المحمّلة</span><strong id="totalCount">—</strong><small>آخر 100 طلب</small></article>
+        <article class="metric-card"><span class="metric-label">طلبات جديدة</span><strong id="newCount">—</strong><small>تحتاج إلى فرز أولي</small></article>
+        <article class="metric-card"><span class="metric-label">قيد المراجعة</span><strong id="triageCount">—</strong><small>تحتاج إلى متابعة</small></article>
+        <article class="metric-card"><span class="metric-label">قيد التنفيذ</span><strong id="progressCount">—</strong><small>طلبات تم إسنادها</small></article>
+      </div>
+      <section class="workspace-panel">
+        <div class="workspace-toolbar"><div><h2>طلبات العملاء</h2><p>راجع الطلبات وحدّث حالتها ضمن الصلاحيات الممنوحة لك.</p></div><div class="filters"><label class="search-box"><span>بحث</span><input id="searchInput" type="search" placeholder="الاسم أو البريد أو الرقم المرجعي"></label><label><span>الحالة</span><select id="statusFilter"><option value="all">كل الحالات</option><option value="new">جديد</option><option value="triage">فرز أولي</option><option value="awaiting_client">بانتظار العميل</option><option value="assigned">تم الإسناد</option><option value="in_progress">قيد التنفيذ</option><option value="awaiting_payment">بانتظار الدفع</option><option value="scheduled">مجدول</option><option value="completed">مكتمل</option><option value="declined">مرفوض</option><option value="cancelled">ملغي</option><option value="archived">مؤرشف</option></select></label></div></div>
+        <p id="dashboardMessage" class="notice" role="status" aria-live="polite"></p>
+        <div id="emptyState" class="empty-state hidden"><span>⌕</span><strong>لا توجد طلبات مطابقة</strong><p>جرّب تغيير البحث أو مرشح الحالة.</p></div>
+        <div id="requestList" class="request-list"></div>
+      </section>
+      <p class="dashboard-footnote">تُعرض بيانات العملاء للمخولين فقط. لا تُدخل بيانات سرية في الملاحظات العامة، ولا تشارك روابط الجلسات.</p>
+    </section>
+  </main>
+</body>
+</html>
