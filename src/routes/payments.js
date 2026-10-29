@@ -55,24 +55,35 @@ function createPaymentRouter(pool) {
         return res.status(400).json({ error: 'Provide a linked request, payment method, transaction reference, and valid amount if known.' });
       }
 
+      let client;
+      let transactionStarted = false;
       try {
-        const owned = await pool.query(
+        client = await pool.connect();
+        await client.query('BEGIN');
+        transactionStarted = true;
+        const owned = await client.query(
           'SELECT id FROM service_requests WHERE id = $1 AND client_user_id = $2 LIMIT 1',
           [requestId, req.auth.userId]
         );
-        if (!owned.rows[0]) return res.status(404).json({ error: 'Linked request not found.' });
-        const result = await pool.query(
+        if (!owned.rows[0]) {
+          await client.query('ROLLBACK');
+          transactionStarted = false;
+          return res.status(404).json({ error: 'Linked request not found.' });
+        }
+        const result = await client.query(
           `INSERT INTO payment_records
             (request_id, client_user_id, method, amount, currency, status, provider_reference, client_note)
            VALUES ($1,$2,$3,$4,'EGP','submitted',$5,$6)
            RETURNING id, request_id, method, amount, currency, status, provider_reference, created_at`,
           [requestId, req.auth.userId, method, amount, providerReference, clientNote]
         );
-        await pool.query(
+        await client.query(
           `INSERT INTO audit_events (actor_user_id, action_code, entity_type, entity_id, request_id, outcome)
            VALUES ($1, 'payment.submitted', 'payment', $2, $3, 'success')`,
           [req.auth.userId, result.rows[0].id, requestId]
         );
+        await client.query('COMMIT');
+        transactionStarted = false;
         try {
           const clientInfo = await pool.query('SELECT email, preferred_language FROM app_users WHERE id = $1 LIMIT 1', [req.auth.userId]);
           const requestInfo = await pool.query('SELECT reference_code FROM service_requests WHERE id = $1 LIMIT 1', [requestId]);
@@ -87,8 +98,11 @@ function createPaymentRouter(pool) {
         }
         return res.status(201).json({ payment: result.rows[0], message: 'Payment details submitted for review.' });
       } catch (error) {
+        if (client && transactionStarted) await client.query('ROLLBACK').catch(() => {});
         console.error('Client payment submission failed:', error.message);
         return res.status(503).json({ error: 'Payment details could not be submitted.' });
+      } finally {
+        if (client) client.release();
       }
     }
   );
