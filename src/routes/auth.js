@@ -93,7 +93,7 @@ function createAuthRouter(pool, config) {
     const session = await findActiveSession(pool, readCookie(req, cookieName)).catch(() => null);
     if (!session) return res.status(401).json({ error: 'Authentication required.' });
     const result = await pool.query(
-      'SELECT id, email, preferred_language, status FROM app_users WHERE id = $1 LIMIT 1',
+      'SELECT u.id, u.email, u.preferred_language, u.status, cp.full_name FROM app_users u LEFT JOIN client_profiles cp ON cp.user_id = u.id WHERE u.id = $1 LIMIT 1',
       [session.userId]
     ).catch(() => ({ rows: [] }));
     if (!result.rows[0]) return res.status(401).json({ error: 'Authentication required.' });
