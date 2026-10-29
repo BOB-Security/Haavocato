@@ -90,6 +90,11 @@ function createApp({ pool, config }) {
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
 
   app.get('/admin', (_req, res) => res.sendFile(path.join(publicDir, 'admin.html')));
+  app.get('/about', (_req, res) => res.sendFile(path.join(publicDir, 'about.html')));
+  app.get('/services', (_req, res) => res.sendFile(path.join(publicDir, 'services.html')));
+  app.get('/partners', (_req, res) => res.sendFile(path.join(publicDir, 'partners.html')));
+  app.get('/insights', (_req, res) => res.sendFile(path.join(publicDir, 'insights.html')));
+  app.get('/contact', (_req, res) => res.sendFile(path.join(publicDir, 'contact.html')));
   app.get('/portal', (_req, res) => res.sendFile(path.join(publicDir, 'portal.html')));
   app.get('/verify-email', (_req, res) => res.sendFile(path.join(publicDir, 'verify-email.html')));
   app.get('/reset-password', (_req, res) => res.sendFile(path.join(publicDir, 'reset-password.html')));
