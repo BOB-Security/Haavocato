@@ -59,18 +59,23 @@ async function createRequest(pool, input, actorUserId = null) {
   }
 }
 
-async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, publicMessage = null, internalNote = null }) {
+async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, publicMessage = null, internalNote = null, mustBeAssignedTo = null }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const currentResult = await client.query(
-      'SELECT id, status, preferred_language FROM service_requests WHERE id = $1 FOR UPDATE',
+      'SELECT id, status, preferred_language, assigned_to FROM service_requests WHERE id = $1 FOR UPDATE',
       [requestId]
     );
     const current = currentResult.rows[0];
     if (!current) {
       const error = new Error('Request not found.');
       error.code = 'REQUEST_NOT_FOUND';
+      throw error;
+    }
+    if (mustBeAssignedTo && current.assigned_to !== mustBeAssignedTo) {
+      const error = new Error('Request not found.');
+      error.code = 'REQUEST_NOT_ASSIGNED';
       throw error;
     }
     assertTransition(current.status, toStatus);
@@ -128,15 +133,20 @@ async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, pub
   }
 }
 
-async function listRequests(pool, { status, limit = 50, offset = 0 } = {}) {
+async function listRequests(pool, { status, assignedTo, limit = 50, offset = 0 } = {}) {
   const safeLimit = Number.isInteger(limit) ? Math.min(Math.max(limit, 1), 100) : 50;
   const safeOffset = Number.isInteger(offset) ? Math.max(offset, 0) : 0;
   const values = [];
-  let where = '';
+  const conditions = [];
   if (status) {
     values.push(status);
-    where = 'WHERE status = $1';
+    conditions.push(`status = ${values.length}`);
   }
+  if (assignedTo) {
+    values.push(assignedTo);
+    conditions.push(`assigned_to = ${values.length}`);
+  }
+  const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
   values.push(safeLimit, safeOffset);
   const limitPosition = values.length - 1;
   const offsetPosition = values.length;
@@ -145,7 +155,7 @@ async function listRequests(pool, { status, limit = 50, offset = 0 } = {}) {
             requester_phone, description, status, priority, assigned_to, submitted_at, updated_at
        FROM service_requests ${where}
       ORDER BY submitted_at DESC
-      LIMIT $${limitPosition} OFFSET $${offsetPosition}`,
+      LIMIT ${limitPosition} OFFSET ${offsetPosition}`,
     values
   );
   return result.rows;
