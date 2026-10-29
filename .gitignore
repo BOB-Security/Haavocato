@@ -5,3 +5,11 @@ node_modules/
 npm-debug.log*
 .DS_Store
 coverage/
+
+# Private legal documents, backups, and local storage must never be committed.
+private-files/
+private-storage/
+uploads/
+backups/
+*.dump
+*.sql.gz
