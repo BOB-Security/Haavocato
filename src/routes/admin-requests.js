@@ -21,7 +21,7 @@ function createAdminRequestRouter(pool) {
         return res.status(400).json({ error: 'Invalid pagination parameters.' });
       }
       try {
-        const requests = await listRequests(pool, { status, limit, offset });
+        const requests = await listRequests(pool, { status, assignedTo: req.auth.roles.has('lawyer') ? req.auth.userId : undefined, limit, offset });
         return res.json({ requests, page: { limit: Math.min(Math.max(limit, 1), 100), offset } });
       } catch (error) {
         console.error('Admin request list failed:', error.message);
@@ -46,10 +46,11 @@ function createAdminRequestRouter(pool) {
       try {
         const request = await changeRequestStatus(pool, {
           requestId, toStatus, actorUserId: req.auth.userId, publicMessage, internalNote,
+          mustBeAssignedTo: req.auth.roles.has('lawyer') ? req.auth.userId : null,
         });
         return res.json({ request });
       } catch (error) {
-        if (error.code === 'REQUEST_NOT_FOUND') return res.status(404).json({ error: 'Request not found.' });
+        if (error.code === 'REQUEST_NOT_FOUND' || error.code === 'REQUEST_NOT_ASSIGNED') return res.status(404).json({ error: 'Request not found.' });
         if (error.code === 'INVALID_STATUS_TRANSITION') return res.status(409).json({ error: error.message });
         console.error('Admin request status update failed:', error.message);
         return res.status(500).json({ error: 'Could not update request status.' });
