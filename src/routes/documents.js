@@ -12,7 +12,7 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1 } });
 
 function safeFilename(value) {
-  const base = path.basename(String(value || 'document')).replace(/[\\/\\0-\\r\\n]/g, '_');
+  const base = path.basename(String(value || 'document')).replaceAll('/', '_').replaceAll('\\\\', '_').replace(/[\\0\\r\\n]/g, '_');
   const safe = base.replace(/[^\p{L}\p{N}._ -]/gu, '_').slice(0, 180);
   return safe || 'document';
 }
