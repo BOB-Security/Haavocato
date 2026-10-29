@@ -165,14 +165,13 @@ function createAdminUsersRouter(pool,config) {
     try{
       await client.query('BEGIN');
       const target=await client.query(
-        `SELECT u.id,u.status,EXISTS(
-           SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id
-            WHERE ur.user_id=u.id AND rd.code='super_admin'
-         ) AS is_super_admin
+        `SELECT u.id,u.status,
+          EXISTS(SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id WHERE ur.user_id=u.id AND rd.code='super_admin') AS is_super_admin,
+          EXISTS(SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id WHERE ur.user_id=u.id AND rd.code <> 'client') AS is_staff
          FROM app_users u WHERE u.id=$1 FOR UPDATE`,
         [id]
       );
-      if(!target.rows[0]){await client.query('ROLLBACK');return res.status(404).json({error:'Staff account not found.'});}
+      if(!target.rows[0]||!target.rows[0].is_staff){await client.query('ROLLBACK');return res.status(404).json({error:'Staff account not found.'});}
       if(target.rows[0].is_super_admin){await client.query('ROLLBACK');return res.status(403).json({error:'Super administrator accounts require a separate reviewed procedure.'});}
       const updated=await client.query('UPDATE app_users SET status=$1,updated_at=NOW() WHERE id=$2 RETURNING id,email,status',[status,id]);
       if(status==='suspended')await client.query('UPDATE app_sessions SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL',[id]);
@@ -196,7 +195,9 @@ function createAdminUsersRouter(pool,config) {
     try{
       await client.query('BEGIN');
       const target=await client.query(
-        `SELECT u.id,EXISTS(SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id WHERE ur.user_id=u.id AND rd.code='super_admin') AS is_super_admin
+        `SELECT u.id,
+          EXISTS(SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id WHERE ur.user_id=u.id AND rd.code='super_admin') AS is_super_admin,
+          EXISTS(SELECT 1 FROM user_roles ur JOIN role_definitions rd ON rd.id=ur.role_id WHERE ur.user_id=u.id AND rd.code <> 'client') AS is_staff
          FROM app_users u WHERE u.id=$1 FOR UPDATE`,
         [id]
       );
