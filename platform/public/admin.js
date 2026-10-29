@@ -644,6 +644,6 @@ statusFilter.addEventListener('change',renderRequests);
 (async function init(){
   try{
     await api('/api/auth/me');showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadCms()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadStaffRoles(),loadStaffUsers(),loadClients(),loadAudit(),loadCms()]);
   }catch{showLogin();}
 })();
