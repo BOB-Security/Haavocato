@@ -26,6 +26,18 @@
       <p id="portalListMessage" class="portal-message" role="status" aria-live="polite"></p>
       <div id="portalRequestList" class="portal-request-list"></div>
       <div id="portalEmpty" class="portal-empty hidden"><span>§</span><h3>No linked requests yet</h3><p>When you submit a consultation request while signed in, its reference will appear here.</p><a class="text-link" href="/#consultation">Start a request →</a></div>
+      <section class="appointment-workspace">
+        <div class="portal-requests-head"><h2>Consultation appointments</h2></div>
+        <p class="muted">Choose an available time. Your booking will remain pending until the firm confirms it.</p>
+        <form id="appointmentForm" class="appointment-form">
+          <div><label for="appointmentMode">Consultation type</label><select id="appointmentMode" required><option value="video">Online video</option><option value="phone">Phone call</option><option value="in_person">In person</option></select></div>
+          <div><label for="appointmentRequest">Link to a request (optional)</label><select id="appointmentRequest"><option value="">No linked request</option></select></div>
+          <div><label for="appointmentSlot">Available date and time</label><select id="appointmentSlot" required><option value="">Loading available times…</option></select></div>
+          <button id="bookAppointment" class="button" type="submit">Request appointment ↗</button>
+        </form>
+        <p id="appointmentMessage" class="portal-message" role="status" aria-live="polite"></p>
+        <div id="appointmentList" class="portal-request-list"></div>
+      </section>
     </section>
   </main>
   <footer><div class="section-shell footer-bottom"><span>© HA Advocates Legal Consultancy</span><span>Protect your password and sign out when using a shared device.</span></div></footer>
