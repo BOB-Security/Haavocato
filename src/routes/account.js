@@ -116,7 +116,7 @@ function createAccountRouter(pool, config) {
 
   router.post('/verification/resend', limited, async (req, res) => {
     const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) {
       return res.status(202).json({ message: GENERIC_VERIFY_MESSAGE });
     }
     try {
@@ -134,7 +134,7 @@ function createAccountRouter(pool, config) {
             from: process.env.RESEND_FROM_EMAIL,
             to: user.email,
             subject: 'Verify your HA Advocates account',
-            text: 'Open this one-time link within 30 minutes to verify your email address:\\n' + link + '\\n\\nIf you did not request this account, ignore this message.',
+            text: 'Open this one-time link within 30 minutes to verify your email address:\n' + link + '\n\nIf you did not request this account, ignore this message.',
           });
         } catch (error) {
           console.error('Verification resend failed:', error.message);
