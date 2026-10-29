@@ -254,6 +254,40 @@ function formatBytesAdmin(value){
   return (bytes/(1024*1024)).toFixed(1)+' MB';
 }
 
+
+const notificationStatuses={queued:'في الطابور',sent:'تم الإرسال',failed:'فشل الإرسال',cancelled:'ملغي'};
+const notificationTemplates={request_received:'استلام طلب',request_status:'تحديث حالة طلب',appointment_requested:'طلب موعد',appointment_status:'تحديث موعد',payment_submitted:'استلام سجل دفع',payment_status:'تحديث دفع'};
+async function loadNotifications(){
+  const container=document.getElementById('adminNotificationList');
+  const message=document.getElementById('adminNotificationsMessage');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/admin/notifications');
+    const items=Array.isArray(data.notifications)?data.notifications:[];
+    if(!items.length){container.append(node('p','request-meta','لا توجد إشعارات مسجلة.'));setMessage(message,'تم تحميل طابور الإشعارات.',true);return;}
+    items.forEach(item=>{
+      const card=node('article','notification-card');
+      const info=node('div','');
+      info.append(node('strong','',(notificationTemplates[item.template_code]||item.template_code)+' · '+(item.recipient_email||'بدون بريد')));
+      info.append(node('small','',(notificationStatuses[item.status]||item.status)+' · محاولات: '+item.attempt_count+' · '+formatDate(item.created_at)));
+      if(item.failure_code)info.append(node('p','notification-failure','رمز الخطأ: '+item.failure_code));
+      const actions=node('div','notification-actions');
+      actions.append(node('span','status-pill',notificationStatuses[item.status]||item.status));
+      if(item.status==='failed'){
+        const retry=node('button','','إعادة المحاولة');retry.type='button';
+        retry.addEventListener('click',async()=>{
+          retry.disabled=true;
+          try{await api('/api/admin/notifications/'+encodeURIComponent(item.id)+'/retry',{method:'POST',body:'{}'});setMessage(message,'تمت إعادة الرسالة إلى الطابور.',true);await loadNotifications();}
+          catch(error){setMessage(message,error.message,false);}finally{retry.disabled=false;}
+        });
+        actions.append(retry);
+      }
+      card.append(info,actions);container.append(card);
+    });
+    setMessage(message,'تم تحميل طابور الإشعارات.',true);
+  }catch(error){setMessage(message,error.message,false);}
+}
+
 let cmsServices=[],cmsPages=[],cmsInsights=[],cmsPartners=[];
 document.querySelectorAll('[data-cms-tab]').forEach(button=>button.addEventListener('click',()=>{
   document.querySelectorAll('[data-cms-tab]').forEach(item=>item.classList.toggle('active',item===button));
@@ -422,7 +456,7 @@ loginForm.addEventListener('submit',async(event)=>{
   try{
     await api('/api/auth/login',{method:'POST',body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('password').value})});
     document.getElementById('password').value='';loginMessage.textContent='';showDashboard();
-    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadCms()]);
+    await Promise.all([loadRequests(),loadAppointments(),loadLawyers(),loadAvailability(),loadPayments(),loadDocuments(),loadNotifications(),loadCms()]);
   }catch(error){loginMessage.textContent=error.message;}
   finally{button.disabled=false;}
 });
@@ -431,6 +465,7 @@ refreshButton.addEventListener('click',loadRequests);
 document.getElementById('refreshAppointments').addEventListener('click',loadAppointments);
 document.getElementById('refreshPayments').addEventListener('click',loadPayments);
 document.getElementById('refreshDocuments').addEventListener('click',loadDocuments);
+document.getElementById('refreshNotifications').addEventListener('click',loadNotifications);
 searchInput.addEventListener('input',renderRequests);
 statusFilter.addEventListener('change',renderRequests);
 
