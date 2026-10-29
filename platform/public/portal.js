@@ -107,7 +107,29 @@ async function loadRequests(){
       head.append(left,pill);
       const meta=document.createElement('div');meta.className='portal-request-meta';
       meta.textContent='Submitted '+formatDate(item.submitted_at);
-      card.append(head,meta);requestList.append(card);
+      const detailButton=node('button','inline-action','View status timeline');detailButton.type='button';
+      const detailPanel=node('div','request-timeline hidden');
+      detailButton.addEventListener('click',async()=>{
+        const opening=detailPanel.classList.contains('hidden');
+        detailPanel.classList.toggle('hidden',!opening);
+        if(!opening||detailPanel.dataset.loaded==='true')return;
+        detailPanel.append(node('p','muted','Loading timeline…'));
+        try{
+          const detail=await api('/api/client/requests/'+encodeURIComponent(item.reference_code));
+          detailPanel.replaceChildren();
+          detailPanel.append(node('p','',detail.request.description||'No description.'));
+          const timeline=Array.isArray(detail.timeline)?detail.timeline:[];
+          if(!timeline.length)detailPanel.append(node('p','muted','No status updates have been published yet.'));
+          timeline.forEach(event=>{
+            const row=node('div','timeline-event');
+            row.append(node('span','timeline-dot',''),node('div','',event.public_message||statuses[event.to_status]||event.to_status),node('small','',formatDate(event.created_at)));
+            detailPanel.append(row);
+          });
+          detailPanel.dataset.loaded='true';
+          detailButton.textContent='Hide timeline';
+        }catch(error){detailPanel.replaceChildren(node('p','portal-message',error.message));}
+      });
+      card.append(head,meta,detailButton,detailPanel);requestList.append(card);
       appointmentRequest.add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
       document.getElementById('paymentRequest').add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
     });
