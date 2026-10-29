@@ -2,8 +2,6 @@
 -- Applying this migration creates role definitions and permission mappings only;
 -- it does not create or grant access to any user account.
 
-BEGIN;
-
 INSERT INTO role_definitions (code, display_name_en, display_name_ar) VALUES
   ('super_admin', 'Super administrator', 'مدير النظام الأعلى'),
   ('operations_admin', 'Operations administrator', 'مدير العمليات'),
@@ -117,4 +115,3 @@ CROSS JOIN (VALUES
 WHERE r.code = 'client'
 ON CONFLICT DO NOTHING;
 
-COMMIT;
