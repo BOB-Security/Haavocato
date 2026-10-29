@@ -147,29 +147,43 @@ function createAdminAppointmentRouter(pool) {
           (validUntil && !/^\d{4}-\d{2}-\d{2}$/.test(validUntil))) {
         return res.status(400).json({ error: 'Review the availability rule fields.' });
       }
+      let client;
+      let transactionStarted = false;
       try {
-        const staff = await pool.query(
+        client = await pool.connect();
+        await client.query('BEGIN');
+        transactionStarted = true;
+        const staff = await client.query(
           'SELECT user_id FROM staff_profiles WHERE user_id = $1 AND is_lawyer = TRUE LIMIT 1',
           [staffUserId]
         );
-        if (!staff.rows[0]) return res.status(400).json({ error: 'Select an active lawyer profile.' });
-        const result = await pool.query(
+        if (!staff.rows[0]) {
+          await client.query('ROLLBACK');
+          transactionStarted = false;
+          return res.status(400).json({ error: 'Select an active lawyer profile.' });
+        }
+        const result = await client.query(
           `INSERT INTO availability_rules
             (staff_user_id, weekday, starts_local, ends_local, timezone, valid_from, valid_until, is_active)
            VALUES ($1,$2,$3::time,$4::time,$5,$6,$7,TRUE)
            RETURNING id, staff_user_id, weekday, starts_local, ends_local, timezone, valid_from, valid_until, is_active`,
           [staffUserId, weekday, startsLocal, endsLocal, timezone, validFrom, validUntil]
         );
-        await pool.query(
+        await client.query(
           `INSERT INTO audit_events (action_code, entity_type, entity_id, outcome, metadata)
            VALUES ('availability.rule_created', 'availability_rule', $1, 'success', $2)`,
           [result.rows[0].id, JSON.stringify({ staffUserId, weekday, startsLocal, endsLocal, timezone })]
         );
+        await client.query('COMMIT');
+        transactionStarted = false;
         return res.status(201).json({ rule: result.rows[0] });
       } catch (error) {
+        if (client && transactionStarted) await client.query('ROLLBACK').catch(() => {});
         if (error.code === '22023' || error.code === '22007') return res.status(400).json({ error: 'Invalid timezone or date value.' });
         console.error('Availability rule creation failed:', error.message);
         return res.status(503).json({ error: 'Availability rule could not be created.' });
+      } finally {
+        if (client) client.release();
       }
     }
   );
@@ -179,21 +193,35 @@ function createAdminAppointmentRouter(pool) {
     async (req, res) => {
       const id = String(req.params.id || '');
       if (!UUID.test(id)) return res.status(400).json({ error: 'Invalid availability rule identifier.' });
+      let client;
+      let transactionStarted = false;
       try {
-        const result = await pool.query(
+        client = await pool.connect();
+        await client.query('BEGIN');
+        transactionStarted = true;
+        const result = await client.query(
           'UPDATE availability_rules SET is_active = FALSE WHERE id = $1 RETURNING id',
           [id]
         );
-        if (!result.rows[0]) return res.status(404).json({ error: 'Availability rule not found.' });
-        await pool.query(
+        if (!result.rows[0]) {
+          await client.query('ROLLBACK');
+          transactionStarted = false;
+          return res.status(404).json({ error: 'Availability rule not found.' });
+        }
+        await client.query(
           `INSERT INTO audit_events (action_code, entity_type, entity_id, outcome)
            VALUES ('availability.rule_deactivated', 'availability_rule', $1, 'success')`,
           [id]
         );
+        await client.query('COMMIT');
+        transactionStarted = false;
         return res.json({ ok: true });
       } catch (error) {
+        if (client && transactionStarted) await client.query('ROLLBACK').catch(() => {});
         console.error('Availability rule deactivation failed:', error.message);
         return res.status(503).json({ error: 'Availability rule could not be deactivated.' });
+      } finally {
+        if (client) client.release();
       }
     }
   );
