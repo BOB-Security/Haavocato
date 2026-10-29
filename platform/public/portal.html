@@ -38,6 +38,18 @@
         <p id="appointmentMessage" class="portal-message" role="status" aria-live="polite"></p>
         <div id="appointmentList" class="portal-request-list"></div>
       </section>
+      <section class="document-workspace">
+        <div class="portal-requests-head"><h2>Secure documents</h2></div>
+        <p class="muted">Upload files only for a request you own. Files are stored in a private container and remain unavailable for download until the configured trusted scanner clears them.</p>
+        <form id="documentForm" class="document-form">
+          <label for="documentRequest">Linked request<select id="documentRequest" required><option value="">Choose a request</option></select></label>
+          <label for="documentFile">Choose a file<input id="documentFile" type="file" accept=".pdf,.docx,.xlsx,.jpg,.jpeg,.png" required></label>
+          <small>PDF, DOCX, XLSX, JPEG, or PNG · maximum 10 MB per file</small>
+          <button id="uploadDocument" class="button" type="submit">Upload securely ↗</button>
+        </form>
+        <p id="documentMessage" class="portal-message" role="status" aria-live="polite"></p>
+        <div id="documentList" class="portal-request-list"></div>
+      </section>
       <section class="payment-workspace">
         <div class="portal-requests-head"><h2>Payment records</h2></div>
         <p class="muted">This form records a transfer you have already made. It does not process payments. Use only payment instructions officially provided by the firm.</p>
