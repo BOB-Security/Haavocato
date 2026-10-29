@@ -99,9 +99,9 @@
       </section>
       <section class="workspace-panel cms-panel" data-module="content">
         <div class="workspace-toolbar"><div><h2>إدارة محتوى الموقع</h2><p>حرر الخدمات والمقالات وملفات الشركاء والصفحات باللغتين.</p></div><button id="refreshCms" class="button button-outline" type="button">تحديث المحتوى ↻</button></div>
-        <div class="cms-tabs" role="tablist"><button class="active" data-cms-tab="services" type="button">الخدمات</button><button data-cms-tab="pages" type="button">الصفحات</button><button data-cms-tab="insights" type="button">المقالات</button><button data-cms-tab="partners" type="button">الشركاء</button></div>
+        <div class="cms-tabs" role="tablist"><button class="active" data-cms-tab="services" data-permission="services.manage" type="button">الخدمات</button><button data-cms-tab="pages" data-permission="cms.manage" type="button">الصفحات</button><button data-cms-tab="insights" data-permission="cms.manage" type="button">المقالات</button><button data-cms-tab="partners" data-permission="partners.manage" type="button">الشركاء</button></div>
         <p id="cmsMessage" class="notice" role="status" aria-live="polite"></p>
-        <div class="cms-content" data-cms-panel="services">
+        <div class="cms-content" data-cms-panel="services" data-permission="services.manage">
           <form id="cmsServiceForm" class="cms-form">
             <label>اختر خدمة<select id="cmsServiceSelect"><option value="">اختر الخدمة للتعديل</option></select></label>
             <label>الاسم بالإنجليزية<input id="cmsServiceNameEn" maxlength="200" required></label><label>الاسم بالعربية<input id="cmsServiceNameAr" maxlength="200" required></label>
@@ -112,7 +112,7 @@
             <button class="button" type="submit">حفظ الخدمة</button>
           </form>
         </div>
-        <div class="cms-content hidden" data-cms-panel="pages">
+        <div class="cms-content hidden" data-cms-panel="pages" data-permission="cms.manage">
           <form id="cmsPageForm" class="cms-form">
             <label>المعرّف (slug)<input id="cmsPageSlug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="120" required></label>
             <label>العنوان بالإنجليزية<input id="cmsPageTitleEn" maxlength="200" required></label><label>العنوان بالعربية<input id="cmsPageTitleAr" maxlength="200" required></label>
@@ -121,7 +121,7 @@
             <button class="button" type="submit">حفظ الصفحة</button>
           </form><div id="cmsPageList" class="cms-item-list"></div>
         </div>
-        <div class="cms-content hidden" data-cms-panel="insights">
+        <div class="cms-content hidden" data-cms-panel="insights" data-permission="cms.manage">
           <form id="cmsInsightForm" class="cms-form">
             <label>المعرّف (slug)<input id="cmsInsightSlug" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" maxlength="120" required></label>
             <label>العنوان بالإنجليزية<input id="cmsInsightTitleEn" maxlength="240" required></label><label>العنوان بالعربية<input id="cmsInsightTitleAr" maxlength="240" required></label>
@@ -131,7 +131,7 @@
             <button class="button" type="submit">حفظ المقال</button>
           </form><div id="cmsInsightList" class="cms-item-list"></div>
         </div>
-        <div class="cms-content hidden" data-cms-panel="partners">
+        <div class="cms-content hidden" data-cms-panel="partners" data-permission="partners.manage">
           <form id="cmsPartnerForm" class="cms-form">
             <input id="cmsPartnerId" type="hidden">
             <label>الاسم بالإنجليزية<input id="cmsPartnerNameEn" maxlength="160" required></label><label>الاسم بالعربية<input id="cmsPartnerNameAr" maxlength="160" required></label>
