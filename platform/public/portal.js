@@ -85,7 +85,7 @@ async function showPortal(){
   document.getElementById('welcomeTitle').textContent=data.user.full_name?'Welcome, '+data.user.full_name:'Your client portal';
   document.getElementById('accountEmail').textContent=data.user.email;
   await loadRequests();
-  await Promise.all([loadAppointments(),loadAvailability()]);
+  await Promise.all([loadAppointments(),loadAvailability(),loadPayments()]);
 }
 async function loadRequests(){
   listMessage.textContent='Loading your requests…';requestList.replaceChildren();
@@ -95,6 +95,7 @@ async function loadRequests(){
     document.getElementById('requestCount').textContent=String(requestItems.length);
     empty.classList.toggle('hidden',requestItems.length>0);
     appointmentRequest.replaceChildren(new Option('No linked request',''));
+    document.getElementById('paymentRequest').replaceChildren(new Option('Choose a request',''));
     requestItems.forEach(item=>{
       const card=document.createElement('article');card.className='portal-request-card';
       const head=document.createElement('div');head.className='portal-request-head';
@@ -108,6 +109,7 @@ async function loadRequests(){
       meta.textContent='Submitted '+formatDate(item.submitted_at);
       card.append(head,meta);requestList.append(card);
       appointmentRequest.add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
+      document.getElementById('paymentRequest').add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
     });
     listMessage.textContent=requestItems.length?'Your requests are up to date.':'';
     listMessage.classList.add('success');
@@ -205,7 +207,48 @@ document.getElementById('appointmentForm').addEventListener('submit',async(event
   finally{button.disabled=false;}
 });
 
+
+const paymentLabels={pending:'Pending',submitted:'Submitted',under_review:'Under review',confirmed:'Confirmed',rejected:'Rejected',refunded:'Refunded',cancelled:'Cancelled'};
+const paymentMethods={vodafone_cash:'Vodafone Cash',instapay:'InstaPay',bank_transfer:'Bank transfer'};
+async function loadPayments(){
+  const container=document.getElementById('paymentList');
+  const status=document.getElementById('paymentMessage');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/payments/mine');
+    const payments=Array.isArray(data.payments)?data.payments:[];
+    if(!payments.length){container.append(node('p','muted','No payment records have been submitted yet.'));return;}
+    payments.forEach(payment=>{
+      const card=node('article','payment-record');
+      const info=node('div','');
+      info.append(node('strong','',(paymentMethods[payment.method]||payment.method)+' · '+(payment.reference_code||'Request')));
+      info.append(node('small','',(payment.amount==null?'Amount not specified':Number(payment.amount).toFixed(2)+' '+payment.currency)+' · Ref: '+payment.provider_reference+' · '+formatDate(payment.created_at)));
+      const pill=node('span','payment-status '+payment.status,paymentLabels[payment.status]||payment.status);
+      card.append(info,pill);container.append(card);
+    });
+  }catch(error){status.textContent=error.message;status.classList.remove('success');}
+}
+document.getElementById('paymentForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const button=document.getElementById('submitPayment');button.disabled=true;
+  const status=document.getElementById('paymentMessage');status.textContent='Submitting payment record…';status.classList.remove('success');
+  const amount=document.getElementById('paymentAmount').value;
+  try{
+    const data=await api('/api/payments',{method:'POST',body:JSON.stringify({
+      requestId:document.getElementById('paymentRequest').value,
+      method:document.getElementById('paymentMethod').value,
+      amount:amount||null,
+      providerReference:document.getElementById('paymentReference').value,
+      clientNote:document.getElementById('paymentNote').value||null
+    })});
+    status.textContent=data.message||'Payment record submitted for review.';status.classList.add('success');
+    document.getElementById('paymentReference').value='';document.getElementById('paymentAmount').value='';document.getElementById('paymentNote').value='';
+    await loadPayments();
+  }catch(error){status.textContent=error.message;status.classList.remove('success');}
+  finally{button.disabled=false;}
+});
+
 function showLogin(){dashboard.classList.add('hidden');authSection.classList.remove('hidden');logout.hidden=true;}
-document.getElementById('refreshPortal').addEventListener('click',async()=>{await loadRequests();await Promise.all([loadAppointments(),loadAvailability()]);});
+document.getElementById('refreshPortal').addEventListener('click',async()=>{await loadRequests();await Promise.all([loadAppointments(),loadAvailability(),loadPayments()]);});
 logout.addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST',body:'{}'});}catch{}requestItems=[];showLogin();setMessage('You have signed out.',true);});
 (async()=>{try{await api('/api/auth/me');await showPortal();}catch{showLogin();}})();
