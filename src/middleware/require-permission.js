@@ -20,13 +20,15 @@ function requirePermission(pool, permissionCode) {
       if (!session) return res.status(401).json({ error: 'Authentication required.' });
 
       const result = await pool.query(
-        `SELECT DISTINCT rp.permission_code
+        `SELECT DISTINCT rd.code AS role_code, rp.permission_code
            FROM user_roles ur
-           JOIN role_permissions rp ON rp.role_id = ur.role_id
+           JOIN role_definitions rd ON rd.id = ur.role_id
+           LEFT JOIN role_permissions rp ON rp.role_id = ur.role_id
           WHERE ur.user_id = $1`,
         [session.userId]
       );
-      const permissions = new Set(result.rows.map((row) => row.permission_code));
+      const permissions = new Set(result.rows.map((row) => row.permission_code).filter(Boolean));
+      const roles = new Set(result.rows.map((row) => row.role_code));
       if (!permissions.has(permissionCode)) {
         await pool.query(
           `INSERT INTO audit_events (actor_user_id, action_code, entity_type, outcome, ip_address, user_agent)
@@ -36,7 +38,7 @@ function requirePermission(pool, permissionCode) {
         return res.status(403).json({ error: 'You do not have permission to perform this action.' });
       }
 
-      req.auth = { userId: session.userId, sessionId: session.sessionId, permissions };
+      req.auth = { userId: session.userId, sessionId: session.sessionId, permissions, roles };
       return next();
     } catch (error) {
       console.error('Authorization middleware failed:', error.message);
