@@ -14,9 +14,13 @@ function createAdminAppointmentRouter(pool) {
   const router = express.Router();
 
   router.get('/',
-    requirePermission(pool, 'appointments.manage'),
+    requirePermission(pool, 'appointments.read'),
     async (_req, res) => {
       try {
+        const scopedLawyer = req.auth.roles.has('lawyer') && !req.auth.roles.has('super_admin') &&
+          !req.auth.roles.has('operations_admin') && !req.auth.roles.has('intake_staff');
+        const values = scopedLawyer ? [req.auth.userId] : [];
+        const where = scopedLawyer ? 'WHERE a.assigned_lawyer_id = $1' : '';
         const result = await pool.query(
           `SELECT a.id, a.request_id, sr.reference_code, a.client_user_id,
                   cp.full_name AS client_name, a.assigned_lawyer_id, sp.display_name AS lawyer_name,
@@ -26,9 +30,15 @@ function createAdminAppointmentRouter(pool) {
              LEFT JOIN service_requests sr ON sr.id = a.request_id
              LEFT JOIN client_profiles cp ON cp.user_id = a.client_user_id
              LEFT JOIN staff_profiles sp ON sp.user_id = a.assigned_lawyer_id
-            ORDER BY a.starts_at DESC LIMIT 300`
+            ${where} ORDER BY a.starts_at DESC LIMIT 300`,
+          values
         );
-        return res.json({ appointments: result.rows });
+        return res.json({ appointments: result.rows.map(item => ({
+          ...item,
+          allowedTransitions: scopedLawyer
+            ? (['confirmed','rescheduled'].includes(item.status) ? ['completed','no_show'] : [])
+            : [...(APPOINTMENT_TRANSITIONS[item.status] || [])]
+        })) });
       } catch (error) {
         console.error('Admin appointment list failed:', error.message);
         return res.status(503).json({ error: 'Appointments are temporarily unavailable.' });
@@ -37,7 +47,7 @@ function createAdminAppointmentRouter(pool) {
   );
 
   router.patch('/:id/status',
-    requirePermission(pool, 'appointments.manage'),
+    requirePermission(pool, 'appointments.read'),
     async (req, res) => {
       const id = String(req.params.id || '');
       const status = String(req.body.status || '');
@@ -47,13 +57,21 @@ function createAdminAppointmentRouter(pool) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        const currentResult = await client.query('SELECT id, status, client_user_id, request_id, starts_at, consultation_mode FROM appointments WHERE id = $1 FOR UPDATE', [id]);
+        const currentResult = await client.query('SELECT id, status, client_user_id, request_id, starts_at, consultation_mode, assigned_lawyer_id FROM appointments WHERE id = $1 FOR UPDATE', [id]);
         const current = currentResult.rows[0];
         if (!current) {
           await client.query('ROLLBACK');
           return res.status(404).json({ error: 'Appointment not found.' });
         }
-        if (!APPOINTMENT_TRANSITIONS[current.status]?.has(status)) {
+        const scopedLawyer = req.auth.roles.has('lawyer') && !req.auth.roles.has('super_admin') && !req.auth.roles.has('operations_admin') && !req.auth.roles.has('intake_staff');
+        if (scopedLawyer && current.assigned_lawyer_id !== req.auth.userId) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Appointment not found.' });
+        }
+        const allowedTransitions = scopedLawyer
+          ? (['confirmed','rescheduled'].includes(current.status) ? new Set(['completed','no_show']) : new Set())
+          : (APPOINTMENT_TRANSITIONS[current.status] || new Set());
+        if (!allowedTransitions.has(status)) {
           await client.query('ROLLBACK');
           return res.status(409).json({ error: 'This appointment status transition is not allowed.' });
         }
