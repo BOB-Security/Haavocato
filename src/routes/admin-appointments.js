@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { requirePermission } = require('../middleware/require-permission');
+const { enqueueEmail } = require('../services/notification-service');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const APPOINTMENT_TRANSITIONS = Object.freeze({ requested: new Set(['confirmed','cancelled']), confirmed: new Set(['rescheduled','completed','cancelled','no_show']), rescheduled: new Set(['confirmed','completed','cancelled','no_show']), completed: new Set(), cancelled: new Set(), no_show: new Set() });
@@ -46,7 +47,7 @@ function createAdminAppointmentRouter(pool) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
-        const currentResult = await client.query('SELECT id, status FROM appointments WHERE id = $1 FOR UPDATE', [id]);
+        const currentResult = await client.query('SELECT id, status, client_user_id, request_id, starts_at, consultation_mode FROM appointments WHERE id = $1 FOR UPDATE', [id]);
         const current = currentResult.rows[0];
         if (!current) {
           await client.query('ROLLBACK');
@@ -67,6 +68,18 @@ function createAdminAppointmentRouter(pool) {
            VALUES ($1, 'appointment.status_changed', 'appointment', $2, 'success', $3)`,
           [req.auth.userId, id, JSON.stringify({ from: current.status, to: status })]
         );
+        const clientInfo = current.client_user_id
+          ? await client.query('SELECT email, preferred_language FROM app_users WHERE id = $1 LIMIT 1', [current.client_user_id])
+          : { rows: [] };
+        const requestInfo = current.request_id
+          ? await client.query('SELECT reference_code FROM service_requests WHERE id = $1 LIMIT 1', [current.request_id])
+          : { rows: [] };
+        await enqueueEmail(client, {
+          recipientEmail: clientInfo.rows[0]?.email,
+          templateCode: 'appointment_status',
+          relatedRequestId: current.request_id,
+          metadata: { status, startsAt: current.starts_at, mode: current.consultation_mode, referenceCode: requestInfo.rows[0]?.reference_code || '', language: clientInfo.rows[0]?.preferred_language || 'en' }
+        });
         await client.query('COMMIT');
         return res.json({ appointment: result.rows[0] });
       } catch (error) {
