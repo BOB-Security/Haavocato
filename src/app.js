@@ -108,6 +108,7 @@ function createApp({ pool, config }) {
   app.get('/portal', (_req, res) => res.sendFile(path.join(publicDir, 'portal.html')));
   app.get('/verify-email', (_req, res) => res.sendFile(path.join(publicDir, 'verify-email.html')));
   app.get('/reset-password', (_req, res) => res.sendFile(path.join(publicDir, 'reset-password.html')));
+  app.get('/accept-invite', (_req, res) => res.sendFile(path.join(publicDir, 'accept-invite.html')));
   app.use(express.static(publicDir, { index: 'index.html', maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
   app.get(/.*/, (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
 
