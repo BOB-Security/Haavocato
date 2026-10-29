@@ -67,6 +67,8 @@ function createDocumentRouter(pool) {
     if(!validateFile(req.file))return res.status(415).json({error:'Allowed files: PDF, DOCX, XLSX, JPEG, or PNG with a matching file signature.'});
 
     let storageKey=null;
+    let client=null;
+    let transactionStarted=false;
     try{
       const owned=await pool.query(
         'SELECT id FROM service_requests WHERE id=$1 AND client_user_id=$2 LIMIT 1',
@@ -77,7 +79,10 @@ function createDocumentRouter(pool) {
       const checksum=crypto.createHash('sha256').update(req.file.buffer).digest('hex');
       storageKey='documents/'+crypto.randomUUID();
       await uploadPrivateDocument(storageKey,req.file.buffer,checksum);
-      const result=await pool.query(
+      client=await pool.connect();
+      await client.query('BEGIN');
+      transactionStarted=true;
+      const result=await client.query(
         `INSERT INTO private_documents
           (request_id,client_user_id,uploaded_by,original_filename,media_type,byte_size,
            storage_provider,storage_key,checksum_sha256,scan_status,visibility)
@@ -85,17 +90,22 @@ function createDocumentRouter(pool) {
          RETURNING id,request_id,original_filename,media_type,byte_size,scan_status,created_at`,
         [requestId,req.auth.userId,originalFilename,req.file.mimetype,req.file.size,storageKey,checksum]
       );
-      await pool.query(
+      await client.query(
         `INSERT INTO audit_events (actor_user_id,action_code,entity_type,entity_id,request_id,outcome,metadata)
          VALUES ($1,'document.uploaded','document',$2,$3,'success',$4)`,
         [req.auth.userId,result.rows[0].id,requestId,JSON.stringify({byteSize:req.file.size,scanStatus:'pending'})]
       );
+      await client.query('COMMIT');
+      transactionStarted=false;
       return res.status(201).json({document:result.rows[0],message:'Document uploaded to private storage and held until a trusted security scan clears it.'});
     }catch(error){
+      if(client&&transactionStarted)await client.query('ROLLBACK').catch(()=>{});
       if(storageKey)await deletePrivateDocument(storageKey).catch(()=>{});
       if(error.code==='STORAGE_NOT_CONFIGURED')return res.status(503).json({error:'Private document storage is not configured.'});
       console.error('Private document upload failed:',error.message);
       return res.status(503).json({error:'The document could not be stored securely.'});
+    }finally{
+      if(client)client.release();
     }
   });
 
