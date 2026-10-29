@@ -35,7 +35,7 @@ function createAdminRequestRouter(pool) {
     async (req, res) => {
       const requestId = String(req.params.id || '');
       const toStatus = String(req.body.status || '');
-      if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(requestId)) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)) {
         return res.status(400).json({ error: 'Invalid request identifier.' });
       }
       if (!listStatuses().includes(toStatus)) {
