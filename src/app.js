@@ -1,15 +1,18 @@
 'use strict';
 
+const path = require('node:path');
 const express = require('express');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { createAuthRouter } = require('./routes/auth');
 const { createPublicRequestRouter } = require('./routes/public-requests');
+const { createPublicServicesRouter } = require('./routes/public-services');
 const { createAdminRequestRouter } = require('./routes/admin-requests');
 
 function createApp({ pool, config }) {
   if (!pool || !config) throw new TypeError('Database pool and validated config are required.');
   const app = express();
+  const publicDir = path.join(__dirname, '..', 'platform', 'public');
 
   app.disable('x-powered-by');
   if (config.trustProxy) app.set('trust proxy', 1);
@@ -41,10 +44,8 @@ function createApp({ pool, config }) {
   app.use((req, res, next) => {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
     const origin = req.get('origin');
-    if (!origin) return next(); // Non-browser clients may omit Origin; authentication is still required.
-    if (!config.publicOrigin) {
-      return res.status(403).json({ error: 'Request origin is not configured.' });
-    }
+    if (!origin) return next();
+    if (!config.publicOrigin) return res.status(403).json({ error: 'Request origin is not configured.' });
     try {
       if (new URL(origin).origin !== new URL(config.publicOrigin).origin) {
         return res.status(403).json({ error: 'Request origin is not allowed.' });
@@ -70,10 +71,16 @@ function createApp({ pool, config }) {
     standardHeaders: 'draft-8',
     legacyHeaders: false,
   }), createAuthRouter(pool, config));
+  app.use('/api/services', createPublicServicesRouter(pool));
   app.use('/api/requests', createPublicRequestRouter(pool));
   app.use('/api/admin/requests', createAdminRequestRouter(pool));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
+
+  app.get('/admin', (_req, res) => res.sendFile(path.join(publicDir, 'admin.html')));
+  app.use(express.static(publicDir, { index: 'index.html', maxAge: config.nodeEnv === 'production' ? '1h' : 0 }));
+  app.get(/.*/, (_req, res) => res.sendFile(path.join(publicDir, 'index.html')));
+
   app.use((error, _req, res, _next) => {
     if (error?.type === 'entity.too.large') return res.status(413).json({ error: 'Request body is too large.' });
     if (error instanceof SyntaxError && Object.prototype.hasOwnProperty.call(error, 'body')) {
