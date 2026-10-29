@@ -2,7 +2,7 @@ name: Haavocato CI
 
 on:
   push:
-    branches: [main, "build/**"]
+    branches: [main, "build/**", "rebuild/**"]
   pull_request:
     branches: [main]
 
