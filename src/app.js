@@ -13,6 +13,7 @@ const { createClientRequestRouter } = require('./routes/client-requests');
 const { createAppointmentRouter } = require('./routes/appointments');
 const { createAdminAppointmentRouter } = require('./routes/admin-appointments');
 const { createAdminStaffRouter } = require('./routes/admin-staff');
+const { createPaymentRouter } = require('./routes/payments');
 
 function createApp({ pool, config }) {
   if (!pool || !config) throw new TypeError('Database pool and validated config are required.');
@@ -84,6 +85,7 @@ function createApp({ pool, config }) {
   app.use('/api/appointments', createAppointmentRouter(pool));
   app.use('/api/admin/appointments', createAdminAppointmentRouter(pool));
   app.use('/api/admin/staff', createAdminStaffRouter(pool));
+  app.use('/api/payments', createPaymentRouter(pool));
 
   app.use('/api', (_req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
 
