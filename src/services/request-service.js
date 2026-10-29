@@ -80,10 +80,37 @@ async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, pub
        RETURNING id, reference_code, status, updated_at, closed_at`,
       [toStatus, requestId]
     );
+    const defaultMessages = {
+      en: {
+        triage: 'Your request is being reviewed.',
+        awaiting_client: 'We need additional information from you. Please contact our team.',
+        assigned: 'Your request has been assigned to the responsible team member.',
+        in_progress: 'Work on your request is in progress.',
+        awaiting_payment: 'A payment step is required. Please follow the instructions provided by the firm.',
+        scheduled: 'The next step for your request has been scheduled.',
+        completed: 'Your requested service has been marked complete.',
+        declined: 'We are unable to proceed with this request. Please contact the firm if you need clarification.',
+        cancelled: 'Your request has been cancelled.',
+        archived: 'This request has been archived.'
+      },
+      ar: {
+        triage: 'يجري حاليًا مراجعة طلبك.',
+        awaiting_client: 'نحتاج إلى معلومات إضافية منك. يرجى التواصل مع فريقنا.',
+        assigned: 'تم إسناد طلبك إلى المسؤول المختص.',
+        in_progress: 'يجري العمل على طلبك.',
+        awaiting_payment: 'توجد خطوة دفع مطلوبة. يرجى اتباع التعليمات التي قدمتها الشركة.',
+        scheduled: 'تم تحديد موعد للخطوة التالية في طلبك.',
+        completed: 'تم تسجيل اكتمال الخدمة المطلوبة.',
+        declined: 'يتعذر علينا متابعة هذا الطلب. يرجى التواصل مع الشركة إذا كنت بحاجة إلى توضيح.',
+        cancelled: 'تم إلغاء طلبك.',
+        archived: 'تمت أرشفة هذا الطلب.'
+      }
+    };
+    const clientMessage = publicMessage || defaultMessages[current.preferred_language]?.[toStatus] || null;
     await client.query(
       `INSERT INTO request_status_events (request_id, from_status, to_status, public_message, internal_note, changed_by)
        VALUES ($1,$2,$3,$4,$5,$6)`,
-      [requestId, current.status, toStatus, publicMessage, internalNote, actorUserId]
+      [requestId, current.status, toStatus, clientMessage, internalNote, actorUserId]
     );
     await client.query(
       `INSERT INTO audit_events (actor_user_id, action_code, entity_type, entity_id, request_id, outcome)
