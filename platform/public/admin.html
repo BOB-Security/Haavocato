@@ -36,6 +36,24 @@
         <div id="emptyState" class="empty-state hidden"><span>⌕</span><strong>لا توجد طلبات مطابقة</strong><p>جرّب تغيير البحث أو مرشح الحالة.</p></div>
         <div id="requestList" class="request-list"></div>
       </section>
+      <section class="workspace-panel admin-appointments-panel">
+        <div class="workspace-toolbar"><div><h2>إدارة المواعيد</h2><p>راجع طلبات الحجز وأكد الموعد أو حدّث حالته.</p></div><button id="refreshAppointments" class="button button-outline" type="button">تحديث المواعيد ↻</button></div>
+        <p id="appointmentsMessage" class="notice" role="status" aria-live="polite"></p>
+        <div id="adminAppointmentList" class="request-list"></div>
+      </section>
+      <section class="workspace-panel availability-panel">
+        <div class="workspace-toolbar"><div><h2>قواعد التوافر</h2><p>أضف ساعات العمل التي تظهر للعملاء كمواعيد متاحة.</p></div></div>
+        <form id="availabilityForm" class="availability-form">
+          <label>المحامي<select id="availabilityLawyer" required><option value="">اختر المحامي</option></select></label>
+          <label>اليوم<select id="availabilityWeekday" required><option value="0">الأحد</option><option value="1">الاثنين</option><option value="2">الثلاثاء</option><option value="3">الأربعاء</option><option value="4">الخميس</option><option value="5">الجمعة</option><option value="6">السبت</option></select></label>
+          <label>من الساعة<input id="availabilityStart" type="time" value="09:00" required></label>
+          <label>إلى الساعة<input id="availabilityEnd" type="time" value="17:00" required></label>
+          <label>المنطقة الزمنية<select id="availabilityTimezone"><option value="Africa/Cairo">Africa/Cairo</option><option value="UTC">UTC</option></select></label>
+          <button class="button" type="submit">إضافة قاعدة توافر</button>
+        </form>
+        <p id="availabilityMessage" class="notice" role="status" aria-live="polite"></p>
+        <div id="availabilityRuleList" class="request-list"></div>
+      </section>
       <p class="dashboard-footnote">تُعرض بيانات العملاء للمخولين فقط. لا تُدخل بيانات سرية في الملاحظات العامة، ولا تشارك روابط الجلسات.</p>
     </section>
   </main>
