@@ -3,6 +3,7 @@
 const crypto = require('node:crypto');
 const path = require('node:path');
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const { requirePermission } = require('../middleware/require-permission');
 const { uploadPrivateDocument, downloadPrivateDocument, deletePrivateDocument } = require('../services/document-storage');
@@ -10,6 +11,7 @@ const { uploadPrivateDocument, downloadPrivateDocument, deletePrivateDocument } 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_BYTES, files: 1 } });
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: 'draft-8', legacyHeaders: false });
 
 function safeFilename(value) {
   const base = path.basename(String(value || 'document')).replaceAll('/', '_').replaceAll(String.fromCharCode(92), '_').replaceAll(String.fromCharCode(0), '_').replaceAll(String.fromCharCode(13), '_').replaceAll(String.fromCharCode(10), '_');
@@ -59,7 +61,7 @@ function createDocumentRouter(pool) {
     }
   });
 
-  router.post('/', requirePermission(pool,'client.documents.manage_own'), uploadMiddleware, async (req,res) => {
+  router.post('/', requirePermission(pool,'client.documents.manage_own'), uploadLimiter, uploadMiddleware, async (req,res) => {
     const requestId=String(req.body.requestId||'');
     if(!UUID.test(requestId))return res.status(400).json({error:'Select a valid request before uploading a document.'});
     if(!validateFile(req.file))return res.status(415).json({error:'Allowed files: PDF, DOCX, XLSX, JPEG, or PNG with a matching file signature.'});
