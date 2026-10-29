@@ -11,10 +11,25 @@ test('production configuration rejects weak session secrets', () => {
   assert.throws(() => parseConfig({ NODE_ENV: 'production', SESSION_SECRET: 'weak' }), /SESSION_SECRET/);
 });
 
-test('configuration accepts a strong production session secret', () => {
-  const config = parseConfig({ NODE_ENV: 'production', SESSION_SECRET: 'x'.repeat(40), PORT: '8080' });
+test('configuration accepts a strong production session secret and canonical HTTPS origin', () => {
+  const config = parseConfig({
+    NODE_ENV: 'production',
+    SESSION_SECRET: 'x'.repeat(40),
+    DATABASE_URL: 'postgresql://user:password@localhost:5432/haavocato',
+    PUBLIC_ORIGIN: 'https://example.test',
+    PORT: '8080',
+  });
   assert.equal(config.port, 8080);
   assert.equal(config.cookieSecure, true);
+});
+
+test('production configuration rejects a non-HTTPS public origin', () => {
+  assert.throws(() => parseConfig({
+    NODE_ENV: 'production',
+    SESSION_SECRET: 'x'.repeat(40),
+    DATABASE_URL: 'postgresql://user:password@localhost:5432/haavocato',
+    PUBLIC_ORIGIN: 'http://example.test',
+  }), /HTTPS/);
 });
 
 test('password hashes verify only the correct password', async () => {
