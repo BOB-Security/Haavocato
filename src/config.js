@@ -11,15 +11,20 @@ function parseConfig(env = process.env) {
     throw new Error('PORT must be an integer between 1 and 65535.');
   }
 
-  const sessionSecret = env.SESSION_SECRET || '';
+  // Keep compatibility with the existing Azure App Service setting used by
+  // the previous admin dashboard while allowing a dedicated replacement secret.
+  const sessionSecret = env.SESSION_SECRET || env.ADMIN_SESSION_SECRET || '';
   if (nodeEnv === 'production' && Buffer.byteLength(sessionSecret, 'utf8') < 32) {
-    throw new Error('SESSION_SECRET must contain at least 32 bytes in production.');
+    throw new Error('SESSION_SECRET (or legacy ADMIN_SESSION_SECRET) must contain at least 32 bytes in production.');
   }
 
-  const publicOrigin = env.PUBLIC_ORIGIN || '';
+  // Azure App Service supplies WEBSITE_HOSTNAME automatically. Explicit PUBLIC_ORIGIN
+  // remains preferred when the site uses a custom domain.
+  const publicOrigin = env.PUBLIC_ORIGIN
+    || (env.WEBSITE_HOSTNAME ? 'https://' + env.WEBSITE_HOSTNAME : '');
   if (nodeEnv === 'production') {
     if (!env.DATABASE_URL) throw new Error('DATABASE_URL is required in production.');
-    if (!publicOrigin) throw new Error('PUBLIC_ORIGIN is required in production.');
+    if (!publicOrigin) throw new Error('PUBLIC_ORIGIN or Azure WEBSITE_HOSTNAME is required in production.');
     let parsedOrigin;
     try { parsedOrigin = new URL(publicOrigin); } catch { throw new Error('PUBLIC_ORIGIN must be a valid absolute URL.'); }
     if (parsedOrigin.protocol !== 'https:' || parsedOrigin.origin !== publicOrigin.replace(/\/$/, '')) {
