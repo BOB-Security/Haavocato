@@ -4,7 +4,8 @@ const express = require('express');
 const { requirePermission } = require('../middleware/require-permission');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const APPOINTMENT_STATUSES = new Set(['requested','confirmed','rescheduled','completed','cancelled','no_show']);
+const APPOINTMENT_TRANSITIONS = Object.freeze({ requested: new Set(['confirmed','cancelled']), confirmed: new Set(['rescheduled','completed','cancelled','no_show']), rescheduled: new Set(['confirmed','completed','cancelled','no_show']), completed: new Set(), cancelled: new Set(), no_show: new Set() });
+const APPOINTMENT_STATUSES = new Set(Object.keys(APPOINTMENT_TRANSITIONS));
 
 function createAdminAppointmentRouter(pool) {
   const router = express.Router();
@@ -40,23 +41,38 @@ function createAdminAppointmentRouter(pool) {
       if (!UUID.test(id) || !APPOINTMENT_STATUSES.has(status)) {
         return res.status(400).json({ error: 'Invalid appointment identifier or status.' });
       }
+      const client = await pool.connect();
       try {
-        const result = await pool.query(
+        await client.query('BEGIN');
+        const currentResult = await client.query('SELECT id, status FROM appointments WHERE id = $1 FOR UPDATE', [id]);
+        const current = currentResult.rows[0];
+        if (!current) {
+          await client.query('ROLLBACK');
+          return res.status(404).json({ error: 'Appointment not found.' });
+        }
+        if (!APPOINTMENT_TRANSITIONS[current.status]?.has(status)) {
+          await client.query('ROLLBACK');
+          return res.status(409).json({ error: 'This appointment status transition is not allowed.' });
+        }
+        const result = await client.query(
           `UPDATE appointments SET status = $1, updated_at = NOW()
             WHERE id = $2
             RETURNING id, status, starts_at, ends_at`,
           [status, id]
         );
-        if (!result.rows[0]) return res.status(404).json({ error: 'Appointment not found.' });
-        await pool.query(
-          `INSERT INTO audit_events (action_code, entity_type, entity_id, outcome, metadata)
-           VALUES ('appointment.status_changed', 'appointment', $1, 'success', $2)`,
-          [id, JSON.stringify({ status })]
+        await client.query(
+          `INSERT INTO audit_events (actor_user_id, action_code, entity_type, entity_id, outcome, metadata)
+           VALUES ($1, 'appointment.status_changed', 'appointment', $2, 'success', $3)`,
+          [req.auth.userId, id, JSON.stringify({ from: current.status, to: status })]
         );
+        await client.query('COMMIT');
         return res.json({ appointment: result.rows[0] });
       } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
         console.error('Admin appointment status update failed:', error.message);
         return res.status(503).json({ error: 'Appointment status could not be updated.' });
+      } finally {
+        client.release();
       }
     }
   );
