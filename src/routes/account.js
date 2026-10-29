@@ -114,6 +114,40 @@ function createAccountRouter(pool, config) {
     }
   });
 
+  router.post('/verification/resend', limited, async (req, res) => {
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254) {
+      return res.status(202).json({ message: GENERIC_VERIFY_MESSAGE });
+    }
+    try {
+      const result = await pool.query(
+        `SELECT id, email FROM app_users WHERE LOWER(email) = $1 AND status = 'pending' AND email_verified_at IS NULL LIMIT 1`,
+        [email]
+      );
+      const user = result.rows[0];
+      if (user) {
+        const token = await createToken(pool, user.id, 'verify_email');
+        const link = config.publicOrigin + '/verify-email#token=' + encodeURIComponent(token);
+        try {
+          await sendEmail({
+            apiKey: process.env.RESEND_API_KEY,
+            from: process.env.RESEND_FROM_EMAIL,
+            to: user.email,
+            subject: 'Verify your HA Advocates account',
+            text: 'Open this one-time link within 30 minutes to verify your email address:\\n' + link + '\\n\\nIf you did not request this account, ignore this message.',
+          });
+        } catch (error) {
+          console.error('Verification resend failed:', error.message);
+          await pool.query('UPDATE auth_tokens SET consumed_at = NOW() WHERE token_hash = $1', [hashToken(token)]).catch(() => {});
+        }
+      }
+      return res.status(202).json({ message: GENERIC_VERIFY_MESSAGE });
+    } catch (error) {
+      console.error('Verification resend request failed:', error.message);
+      return res.status(202).json({ message: GENERIC_VERIFY_MESSAGE });
+    }
+  });
+
   router.post('/verify-email', limited, async (req, res) => {
     const token = typeof req.body.token === 'string' ? req.body.token : '';
     if (token.length < 32 || token.length > 256) return res.status(400).json({ error: 'This verification link is invalid or expired.' });
