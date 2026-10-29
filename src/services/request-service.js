@@ -114,7 +114,7 @@ async function listRequests(pool, { status, limit = 50, offset = 0 } = {}) {
   const offsetPosition = values.length;
   const result = await pool.query(
     `SELECT id, reference_code, service_name_snapshot, requester_name, requester_email,
-            requester_phone, status, priority, assigned_to, submitted_at, updated_at
+            requester_phone, description, status, priority, assigned_to, submitted_at, updated_at
        FROM service_requests ${where}
       ORDER BY submitted_at DESC
       LIMIT $${limitPosition} OFFSET $${offsetPosition}`,
