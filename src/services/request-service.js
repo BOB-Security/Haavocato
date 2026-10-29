@@ -63,7 +63,7 @@ async function changeRequestStatus(pool, { requestId, toStatus, actorUserId, pub
   try {
     await client.query('BEGIN');
     const currentResult = await client.query(
-      'SELECT id, status FROM service_requests WHERE id = $1 FOR UPDATE',
+      'SELECT id, status, preferred_language FROM service_requests WHERE id = $1 FOR UPDATE',
       [requestId]
     );
     const current = currentResult.rows[0];
