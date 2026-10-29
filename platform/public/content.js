@@ -14,7 +14,7 @@ function applyLanguage(next){
   if(document.getElementById('partnerPlaceholder'))loadPartners();
   if(document.getElementById('insightEmpty'))loadInsights();
   if(document.getElementById('articleRoot'))loadArticle();
-  if(document.getElementById('aboutCmsSection'))loadAboutCms();
+  if(document.querySelector('[data-cms-page]'))loadCmsPage();
 }
 async function getJson(url){
   const response=await fetch(url,{headers:{Accept:'application/json'}});
@@ -88,12 +88,15 @@ async function loadArticle(){
     root.querySelector('.article-body').textContent=error.message;
   }
 }
-async function loadAboutCms(){
-  const section=document.getElementById('aboutCmsSection');if(!section)return;
+async function loadCmsPage(){
+  const section=document.querySelector('[data-cms-page]');if(!section)return;
+  const slug=section.dataset.cmsPage;
   try{
-    const data=await getJson('/api/content/pages/about?lang='+language);
-    section.querySelector('#aboutCmsTitle').textContent=data.page.title||'';
-    section.querySelector('#aboutCmsBody').textContent=data.page.body||'';
+    const data=await getJson('/api/content/pages/'+encodeURIComponent(slug)+'?lang='+language);
+    const title=section.querySelector('[data-cms-title]');
+    const body=section.querySelector('[data-cms-body]');
+    if(title)title.textContent=data.page.title||'';
+    if(body)body.textContent=data.page.body||'';
     section.classList.remove('hidden');
   }catch{section.classList.add('hidden');}
 }
