@@ -64,6 +64,21 @@
         <p id="adminDocumentsMessage" class="notice" role="status" aria-live="polite"></p>
         <div id="adminDocumentList" class="request-list"></div>
       </section>
+      <section class="workspace-panel staff-users-panel">
+        <div class="workspace-toolbar"><div><h2>حسابات الفريق والصلاحيات</h2><p>دعوة موظفين، تغيير الأدوار، وإيقاف الحسابات عند الحاجة.</p></div><button id="refreshStaff" class="button button-outline" type="button">تحديث الفريق ↻</button></div>
+        <div class="staff-invite-wrap">
+          <form id="staffInviteForm" class="staff-invite-form">
+            <label>الاسم الكامل<input id="staffInviteName" maxlength="120" required></label>
+            <label>البريد الإلكتروني<input id="staffInviteEmail" type="email" maxlength="254" required></label>
+            <label>الهاتف (اختياري)<input id="staffInvitePhone" maxlength="40"></label>
+            <label>الدور<select id="staffInviteRole" required><option value="">تحميل الأدوار…</option></select></label>
+            <button class="button" type="submit">إرسال دعوة للفريق ↗</button>
+          </form>
+          <p id="staffInviteMessage" class="notice" role="status" aria-live="polite"></p>
+        </div>
+        <p id="staffUsersMessage" class="notice" role="status" aria-live="polite"></p>
+        <div id="staffUsersList" class="request-list"></div>
+      </section>
       <section class="workspace-panel notifications-panel">
         <div class="workspace-toolbar"><div><h2>الإشعارات والبريد</h2><p>مراقبة طابور الإرسال وإعادة محاولة الرسائل الفاشلة.</p></div><button id="refreshNotifications" class="button button-outline" type="button">تحديث الإشعارات ↻</button></div>
         <p id="adminNotificationsMessage" class="notice" role="status" aria-live="polite"></p>
