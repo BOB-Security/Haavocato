@@ -38,6 +38,20 @@
         <p id="appointmentMessage" class="portal-message" role="status" aria-live="polite"></p>
         <div id="appointmentList" class="portal-request-list"></div>
       </section>
+      <section class="payment-workspace">
+        <div class="portal-requests-head"><h2>Payment records</h2></div>
+        <p class="muted">This form records a transfer you have already made. It does not process payments. Use only payment instructions officially provided by the firm.</p>
+        <form id="paymentForm" class="payment-form">
+          <label for="paymentRequest">Linked request<select id="paymentRequest" required><option value="">Choose a request</option></select></label>
+          <label for="paymentMethod">Payment method<select id="paymentMethod" required><option value="vodafone_cash">Vodafone Cash</option><option value="instapay">InstaPay</option><option value="bank_transfer">Bank transfer</option></select></label>
+          <label for="paymentAmount">Amount transferred (EGP, optional)<input id="paymentAmount" type="number" min="0.01" max="100000000" step="0.01"></label>
+          <label for="paymentReference">Transaction reference<input id="paymentReference" maxlength="160" required></label>
+          <label for="paymentNote">Note (optional)<textarea id="paymentNote" rows="2" maxlength="1000"></textarea></label>
+          <button id="submitPayment" class="button" type="submit">Submit payment record ↗</button>
+        </form>
+        <p id="paymentMessage" class="portal-message" role="status" aria-live="polite"></p>
+        <div id="paymentList" class="portal-request-list"></div>
+      </section>
     </section>
   </main>
   <footer><div class="section-shell footer-bottom"><span>© HA Advocates Legal Consultancy</span><span>Protect your password and sign out when using a shared device.</span></div></footer>
