@@ -9,12 +9,21 @@ const logout = document.getElementById('portalLogout');
 const requestList = document.getElementById('portalRequestList');
 const empty = document.getElementById('portalEmpty');
 const listMessage = document.getElementById('portalListMessage');
+const appointmentMessage = document.getElementById('appointmentMessage');
+const appointmentSlot = document.getElementById('appointmentSlot');
+const appointmentRequest = document.getElementById('appointmentRequest');
 let requestItems = [];
+let appointmentItems = [];
+let availableSlots = [];
 
 const statuses = {
   new:'New',triage:'Initial review',awaiting_client:'Awaiting your response',assigned:'Assigned',
   in_progress:'In progress',awaiting_payment:'Awaiting payment',scheduled:'Scheduled',
   completed:'Completed',declined:'Declined',cancelled:'Cancelled',archived:'Archived'
+};
+const appointmentStatuses = {
+  requested:'Awaiting confirmation',confirmed:'Confirmed',rescheduled:'Rescheduled',
+  completed:'Completed',cancelled:'Cancelled',no_show:'No-show'
 };
 
 async function api(url,options={}) {
@@ -76,6 +85,7 @@ async function showPortal(){
   document.getElementById('welcomeTitle').textContent=data.user.full_name?'Welcome, '+data.user.full_name:'Your client portal';
   document.getElementById('accountEmail').textContent=data.user.email;
   await loadRequests();
+  await Promise.all([loadAppointments(),loadAvailability()]);
 }
 async function loadRequests(){
   listMessage.textContent='Loading your requests…';requestList.replaceChildren();
@@ -84,6 +94,7 @@ async function loadRequests(){
     requestItems=Array.isArray(data.requests)?data.requests:[];
     document.getElementById('requestCount').textContent=String(requestItems.length);
     empty.classList.toggle('hidden',requestItems.length>0);
+    appointmentRequest.replaceChildren(new Option('No linked request',''));
     requestItems.forEach(item=>{
       const card=document.createElement('article');card.className='portal-request-card';
       const head=document.createElement('div');head.className='portal-request-head';
@@ -94,9 +105,9 @@ async function loadRequests(){
       const pill=document.createElement('span');pill.className='portal-status status-'+(Object.hasOwn(statuses,item.status)?item.status:'new');pill.textContent=statuses[item.status]||item.status;
       head.append(left,pill);
       const meta=document.createElement('div');meta.className='portal-request-meta';
-      const date=item.submitted_at?new Date(item.submitted_at).toLocaleString():'';
-      meta.textContent='Submitted '+date;
+      meta.textContent='Submitted '+formatDate(item.submitted_at);
       card.append(head,meta);requestList.append(card);
+      appointmentRequest.add(new Option(item.reference_code+' — '+item.service_name_snapshot,item.id));
     });
     listMessage.textContent=requestItems.length?'Your requests are up to date.':'';
     listMessage.classList.add('success');
@@ -106,7 +117,94 @@ async function loadRequests(){
     if(/Authentication required/i.test(error.message))showLogin();
   }
 }
+function localDate(date){
+  return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+}
+async function loadAvailability(){
+  appointmentSlot.replaceChildren(new Option('Loading available times…',''));
+  const from=new Date();const to=new Date();to.setDate(to.getDate()+14);
+  try{
+    const data=await api('/api/appointments/availability?from='+localDate(from)+'&to='+localDate(to));
+    availableSlots=Array.isArray(data.slots)?data.slots:[];
+    appointmentSlot.replaceChildren(new Option(availableSlots.length?'Choose a date and time':'No times currently available',''));
+    availableSlots.forEach((slot,index)=>{
+      const date=new Date(slot.starts_at);
+      const display=date.toLocaleString(undefined,{timeZone:slot.timezone||'Africa/Cairo',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+      appointmentSlot.add(new Option(display+' · '+(slot.display_name||'Legal team'),String(index)));
+    });
+  }catch(error){
+    availableSlots=[];
+    appointmentSlot.replaceChildren(new Option('Availability unavailable',''));
+    appointmentMessage.textContent=error.message;
+  }
+}
+async function loadAppointments(){
+  const container=document.getElementById('appointmentList');
+  container.replaceChildren();
+  try{
+    const data=await api('/api/appointments/mine');
+    appointmentItems=Array.isArray(data.appointments)?data.appointments:[];
+    if(!appointmentItems.length){container.append(node('p','muted','No appointments have been requested yet.'));return;}
+    appointmentItems.forEach(item=>{
+      const card=node('article','appointment-card');
+      const left=node('div','');
+      left.append(node('h3','',formatDate(item.starts_at)),node('p','',(item.consultation_mode==='video'?'Online video':item.consultation_mode==='phone'?'Phone call':'In person')+' · '+(item.lawyer_name||'Legal team')+' · '+(item.reference_code||'No linked request')));
+      const right=node('div','');
+      const pill=node('span','portal-status','');
+      pill.textContent=appointmentStatuses[item.status]||item.status;
+      right.append(pill);
+      if(['requested','confirmed','rescheduled'].includes(item.status)){
+        const cancel=node('button','inline-action','Cancel request');
+        cancel.type='button';
+        cancel.addEventListener('click',async()=>{
+          cancel.disabled=true;
+          try{
+            await api('/api/appointments/'+encodeURIComponent(item.id)+'/cancel',{method:'POST',body:'{}'});
+            appointmentMessage.textContent='Appointment cancelled.';
+            appointmentMessage.classList.add('success');
+            await Promise.all([loadAppointments(),loadAvailability()]);
+          }catch(error){appointmentMessage.textContent=error.message;appointmentMessage.classList.remove('success');cancel.disabled=false;}
+        });
+        right.append(cancel);
+      }
+      card.append(left,right);container.append(card);
+    });
+  }catch(error){
+    container.append(node('p','portal-message',error.message));
+  }
+}
+function node(tag,className,text){
+  const element=document.createElement(tag);
+  if(className)element.className=className;
+  if(text!==undefined)element.textContent=text;
+  return element;
+}
+function formatDate(value){
+  if(!value)return '—';
+  const date=new Date(value);
+  return Number.isNaN(date.getTime())?'—':date.toLocaleString();
+}
+
+document.getElementById('appointmentForm').addEventListener('submit',async(event)=>{
+  event.preventDefault();
+  const selected=availableSlots[Number(appointmentSlot.value)];
+  if(!selected){appointmentMessage.textContent='Choose an available slot first.';return;}
+  const button=document.getElementById('bookAppointment');button.disabled=true;appointmentMessage.textContent='Submitting appointment request…';appointmentMessage.classList.remove('success');
+  try{
+    const data=await api('/api/appointments',{method:'POST',body:JSON.stringify({
+      lawyerId:selected.staff_user_id,
+      startsAt:selected.starts_at,
+      mode:document.getElementById('appointmentMode').value,
+      requestId:appointmentRequest.value||null
+    })});
+    appointmentMessage.textContent=data.message||'Appointment request submitted.';
+    appointmentMessage.classList.add('success');
+    await Promise.all([loadAppointments(),loadAvailability()]);
+  }catch(error){appointmentMessage.textContent=error.message;appointmentMessage.classList.remove('success');}
+  finally{button.disabled=false;}
+});
+
 function showLogin(){dashboard.classList.add('hidden');authSection.classList.remove('hidden');logout.hidden=true;}
-document.getElementById('refreshPortal').addEventListener('click',loadRequests);
+document.getElementById('refreshPortal').addEventListener('click',async()=>{await loadRequests();await Promise.all([loadAppointments(),loadAvailability()]);});
 logout.addEventListener('click',async()=>{try{await api('/api/auth/logout',{method:'POST',body:'{}'});}catch{}requestItems=[];showLogin();setMessage('You have signed out.',true);});
 (async()=>{try{await api('/api/auth/me');await showPortal();}catch{showLogin();}})();
